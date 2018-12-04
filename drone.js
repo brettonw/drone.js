@@ -21,7 +21,7 @@ let Particle = function () {
     };
 
     _.applyGravity = function (deltaTime) {
-        this.applyAcceleration ([0.0, -9.8, 0.0]);
+        this.applyAcceleration([0.0, -9.8, 0.0]);
     };
 
     _.getMass = function () {
@@ -50,7 +50,7 @@ let GroundConstraint = function () {
 
     _.apply = function (particles, deltaTime) {
         for (let particle of particles) {
-            if (particle.position[1] <= 0) {
+            if (particle.position[1] <= 0.0) {
                 let up = [0, 1, 0];
 
                 let groundVelocity = Float3.dot (particle.velocity, up);
@@ -71,6 +71,8 @@ let GroundConstraint = function () {
                 }
                 */
                 particle.position[1] = 0.0;
+                //particle.velocity.fill (0.0);
+                //particle.force.fill (0.0);
             }
         }
     };
@@ -193,8 +195,8 @@ let Drone = function () {
         this.particles[2].applyForce ([0, -15000, 0]);
         this.particles[3].applyForce ([50000, 0, 0]);
         */
-        this.particles[3].applyForce ([0, 50, 0]);
-        this.particles[5].applyForce ([0, 5000, 0]);
+        this.particles[3].applyForce ([500, 50, 0]);
+        this.particles[5].applyForce ([0, 10000, 0]);
     };
 
     _.updateCoordinateFrame = function () {
@@ -224,13 +226,14 @@ let Drone = function () {
 
     _.update = function (deltaTime) {
         let particles = this.particles;
-        let subSteps = 15;
+        let subSteps = 200;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
             // apply gravity to all the particles
             for (let particle of particles) {
                 particle.applyGravity (deltaTime);
             }
+            GroundConstraint.apply (particles, deltaTime);
 
             // loop over all the particles to update them
             for (let particle of particles) {
@@ -241,8 +244,6 @@ let Drone = function () {
             for (let constraint of this.constraints) {
                 constraint.apply(this.particles, subStepDeltaTime);
             }
-
-            GroundConstraint.apply (particles, deltaTime);
         }
 
         // do a little update to keep everything normalized (numerical methods drift, this provides

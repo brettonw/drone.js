@@ -105,7 +105,17 @@ let buildScene = function () {
                 Program.get ("basic").use ();
                 standardUniforms.MODEL_COLOR = [1.0, 1.0, 0.25];
             },
-            shape: "cube",
+            shape: "sphere2",
+            children: false
+        }))
+        .addChild (Node.new ({
+            transform: Float4x4.chain (Float4x4.scale (4), Float4x4.rotateX (Math.PI / -2)),
+            state: function (standardUniforms) {
+                Program.get ("basic-texture").use ();
+                standardUniforms.TEXTURE_SAMPLER = "grid-16x16";
+                standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
+            },
+            shape: "square",
             children: false
         }));
 
@@ -133,7 +143,9 @@ let main = function () {
     // create the render object
     render = Render.new ({
         canvasId: "render-canvas",
-        loaders: [],
+        loaders: [
+            LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems ("grid-16x16", { generateMipMap: true }),
+        ],
         onReady: OnReady.new (null, buildScene)
     });
 };
