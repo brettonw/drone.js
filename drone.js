@@ -188,13 +188,13 @@ let Drone = function () {
         // vertices have a mass of about 125g.
         let particles = this.particles = [
             Particle.new ({ position: [ 1.0, 0.5,  0.0], mass: 125 }), // 0
-            Particle.new ({ position: [ 0.5, 0.5,  0.5], mass: 125 }), // 1
-            Particle.new ({ position: [ 0.0, 0.5,  1.0], mass: 125 }), // 2
-            Particle.new ({ position: [-0.5, 0.5,  0.5], mass: 125 }), // 3
+            Particle.new ({ position: [ 0.5, 0.5, -0.5], mass: 125 }), // 1
+            Particle.new ({ position: [ 0.0, 0.5, -1.0], mass: 125 }), // 2
+            Particle.new ({ position: [-0.5, 0.5, -0.5], mass: 125 }), // 3
             Particle.new ({ position: [-1.0, 0.5,  0.0], mass: 125 }), // 4
-            Particle.new ({ position: [-0.5, 0.5, -0.5], mass: 125 }), // 5
-            Particle.new ({ position: [ 0.0, 0.5, -1.0], mass: 125 }), // 6
-            Particle.new ({ position: [ 0.5, 0.5, -0.5], mass: 125 }), // 7
+            Particle.new ({ position: [-0.5, 0.5,  0.5], mass: 125 }), // 5
+            Particle.new ({ position: [ 0.0, 0.5,  1.0], mass: 125 }), // 6
+            Particle.new ({ position: [ 0.5, 0.5,  0.5], mass: 125 }), // 7
             Particle.new ({ position: [ 0.0, 0.0,  0.0], mass: 125 })  // 8
         ];
 
@@ -215,7 +215,6 @@ let Drone = function () {
 
             DistanceConstraint.new ({particles: particles, a: 5, b: 1}),
 
-            /*
             DistanceConstraint.new ({particles: particles, a: 0, b: 8}),
             DistanceConstraint.new ({particles: particles, a: 1, b: 8}),
             DistanceConstraint.new ({particles: particles, a: 2, b: 8}),
@@ -224,7 +223,6 @@ let Drone = function () {
             DistanceConstraint.new ({particles: particles, a: 5, b: 8}),
             DistanceConstraint.new ({particles: particles, a: 6, b: 8}),
             DistanceConstraint.new ({particles: particles, a: 7, b: 8})
-            */
         ];
 
         // the points might have been defined in a "comfortable" way, where the centroid is not at
@@ -266,8 +264,8 @@ let Drone = function () {
         this.particles[7].applyForce (Float3.scale ([ 1e3, -1e3, 0], -1));
         this.particles[0].applyForce (Float3.scale ([ 1e3,  1e3, 0], -1));
         */
-        //this.particles[3].applyForce ([ 1e4, 0, 0]);
-        //this.particles[7].applyForce ([ -1e4, 0, 0]);
+        this.particles[3].applyForce ([ 1e4, 0, 0]);
+        this.particles[7].applyForce ([ -1e4, 0, 0]);
     };
 
     _.updateCoordinateFrame = function () {
@@ -278,47 +276,18 @@ let Drone = function () {
         this.velocity = Float3.subtract (position, this.position);
         //console.log ("Velocity: " + Float3.str (this.velocity));
 
-        // extract the coordinate frame - do a little bit of averaging to get a rigid frame
-        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
-        let Z = Float3.normalize (Float3.subtract (particles[1].position, particles[3].position));
-        let Y = Float3.normalize (Float3.subtract (particles[4].position, particles[5].position));
-        let Y2 = Float3.normalize (Float3.cross (Z, X));
-        Y = Float3.normalize (Float3.add (Y, Y2));
-        let Z2 = Float3.normalize (Float3.cross (X, Y));
-        Z = Float3.normalize (Float3.add (Z, Z2));
-        X = Float3.normalize (Float3.cross (Y, Z));
-        let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, position));
-
-        // reset all of the points to their base, transformed by the transform
-        for (let particle of particles) {
-            particle.position = Float4x4.preMultiply (Float4.point (particle.base), transform);
-        }
-    };
-
-    _.updateCoordinateFrame2 = function () {
-        let particles = this.particles;
-
-        // compute the centroid
-        let position = drone.position = computePosition (particles);
-        this.velocity = Float3.subtract (position, this.position);
-        //console.log ("Velocity: " + Float3.str (this.velocity));
-
         // the Y frame will be the average of pts 1, 3, 5, and 7 minus point 8
-        Float3
-
-
-        // extract the coordinate frame - do a little bit of averaging to get a rigid frame
-        let Z = [0, 0, 1];
-
+        let Ymid = Float3.scale (Float3.add (Float3.add (particles[1].position, particles[3].position), Float3.add (particles[5].position, particles[7].position)), 0.25);
+        let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
         let X = Float3.normalize (Float3.subtract (particles[0].position, particles[4].position));
-        let Y = Float3.normalize (Float3.subtract (particles[2].position, particles[6].position));
+        let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[2].position));
 
-        let Y2 = Float3.cross (Z, X);
-        let Y3 = Float3.normalize (Float3.add (Y, Y2));
+        let Z2 = Float3.cross (X, Y);
+        let Z3 = Float3.normalize (Float3.add (Z, Z2));
 
-        let X2 = Float3.cross (Y3, Z);
+        let X2 = Float3.cross (Y, Z3);
 
-        let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y3, Z, position));
+        let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y, Z3, position));
 
         // reset all of the points to their base, transformed by the transform
         for (let particle of particles) {
@@ -352,7 +321,7 @@ let Drone = function () {
 
         // do a little update to keep everything normalized (numerical methods drift, this provides
         // a regular reset to counteract the drift).
-        this.updateCoordinateFrame2 ();
+        this.updateCoordinateFrame ();
 
         // update the scene graph nodes
         for (let i = 0; i < particles.length;  ++i) {
@@ -390,11 +359,14 @@ let Drone = function () {
     _.addToScene = function (parentNode) {
         // put down the platonic we will use for each corner
         for (let i = 0; i < this.particles.length;  ++i) {
+            let red = i / this.particles.length;
+            let blue = 1.0 - red;
             parentNode.addChild(Node.new({
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
-                    standardUniforms.MODEL_COLOR =  (i & 0x01) ? [0.25, 0.25, 1.0] : [1.0, 0.25, 0.25];
+
+                    standardUniforms.MODEL_COLOR =  [red, 0.25, blue];
                 },
                 shape: "cube",
                 children: false
