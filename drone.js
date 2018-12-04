@@ -20,6 +20,21 @@ let Particle = function () {
         this.applyForce (force);
     };
 
+    _.applyGravity = function (deltaTime) {
+        if (this.position[1] > 0) {
+            this.applyAcceleration ([0.0, -9.8, 0.0]);
+        } else {
+            // a little bit of friction...
+            let groundAccel = Float3.copy ([(-0.5 / deltaTime) * this.velocity[0], 0, (-0.5 / deltaTime) * this.velocity[2]]);
+            if (this.velocity[1] < 0) {
+                let elasticity = 0.6;
+                groundAccel[1] = (this.velocity[1] * -(1.0 + elasticity)) / deltaTime;
+            }
+            this.applyAcceleration (groundAccel);
+            this.position[1] = 0.0;
+        }
+    };
+
     _.update = function (deltaTime) {
         // compute acceleration from the forces, convert it to the change in velocity, and then
         // clear out the forces so we don't accidentally keep reapplying them
@@ -145,9 +160,13 @@ let Drone = function () {
         // copy a transformation matrix if one was provided
         this.transformation = Utility.defaultValue (parameters.transformation, Float4x4.identity ());
 
+        /*
         this.particles[0].applyForce ([0, 15000, 0]);
         this.particles[2].applyForce ([0, -15000, 0]);
         this.particles[3].applyForce ([50000, 0, 0]);
+        */
+        this.particles[3].applyForce ([50000, 0, 0]);
+        this.particles[5].applyForce ([0, 2000000, 0]);
     };
 
     _.updateCoordinateFrame = function () {
@@ -180,6 +199,11 @@ let Drone = function () {
         let subSteps = 15;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
+            // apply gravity to all the particles
+            for (let particle of particles) {
+                particle.applyGravity (deltaTime);
+            }
+
             // loop over all the particles to update them
             for (let particle of particles) {
                 particle.update(subStepDeltaTime);
