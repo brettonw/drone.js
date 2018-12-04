@@ -265,7 +265,8 @@ let Drone = function () {
         this.particles[0].applyForce (Float3.scale ([ 1e3,  1e3, 0], -1));
         */
         this.particles[3].applyForce ([ 1e4, 0, 0]);
-        this.particles[7].applyForce ([ -1e4, 0, 0]);
+        this.particles[7].applyForce ([-1e4, 0, 0]);
+        this.particles[0].applyForce ([0, 1e4, 0]);
     };
 
     _.updateCoordinateFrame = function () {
