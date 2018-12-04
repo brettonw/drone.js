@@ -45,7 +45,7 @@ let drawFrame = function () {
     lastTime = nowTime;
 
     standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (20, context.viewportWidth / context.viewportHeight, 0.1, 1000);
-    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([-2, 4, 10], [0, 0, 0], [0, 1, 0]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([-2, 4, 10], drone.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms

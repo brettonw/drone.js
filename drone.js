@@ -46,11 +46,11 @@ let Constraint = function () {
         this.length = Float3.norm (Float3.subtract (parameters.particles[this.a].position, parameters.particles[this.b].position))
 
         // good defaults, damping: 0.5, springConstant (aka: k): 2.0
-        this.damping = Utility.defaultValue (parameters.damping, 0.45);
-        this.springConstant = Utility.defaultValue (parameters.springConstant, 2.0);
+        this.damping = Utility.defaultValue (parameters.damping, 0.4);
+        this.springConstant = Utility.defaultValue (parameters.springConstant, 1.95);
         console.log ("Constraint: (" + this.a + " -> " + this.b + "), length: " + this.length.toFixed(3));
     };
-    
+
     _.apply = function (particles, deltaTime) {
         let a = particles[this.a];
         let b = particles[this.b];
@@ -85,10 +85,12 @@ let Drone = function () {
 
     let computePosition = function (particles) {
         let position = Float3.create().fill (0);
+        let totalMass = 0;
         for (let particle of particles) {
             position = Float3.add (position, Float3.scale (particle.position, particle.mass));
+            totalMass += particle.mass;
         }
-        position = Float3.scale (position, 1 / particles.length);
+        position = Float3.scale (position, 1 / totalMass);
         return position;
     };
 
@@ -101,8 +103,8 @@ let Drone = function () {
             Particle.new ({ position: Float4.point ([ 0.00,  0.00,  1.00]), mass: 125 }), // 1
             Particle.new ({ position: Float4.point ([-1.00,  0.00,  0.00]), mass: 125 }), // 2
             Particle.new ({ position: Float4.point ([ 0.00,  0.00, -1.00]), mass: 125 }), // 3
-            Particle.new ({ position: Float4.point ([ 0.00,  0.25,  0.00]), mass: 125 }), // 4
-            Particle.new ({ position: Float4.point ([ 0.00, -0.50,  0.00]), mass: 125 })  // 5
+            Particle.new ({ position: Float4.point ([ 0.00,  0.15,  0.00]), mass: 125 }), // 4
+            Particle.new ({ position: Float4.point ([ 0.00, -0.35,  0.00]), mass: 125 })  // 5
         ];
 
         let constraints = this.constraints = [
@@ -143,19 +145,20 @@ let Drone = function () {
         // copy a transformation matrix if one was provided
         this.transformation = Utility.defaultValue (parameters.transformation, Float4x4.identity ());
 
-        this.particles[0].applyForce ([0, 4000, 0]);
-        this.particles[2].applyForce ([0, -4000, 0]);
+        this.particles[0].applyForce ([0, 15000, 0]);
+        this.particles[2].applyForce ([0, -15000, 0]);
+        this.particles[3].applyForce ([50000, 0, 0]);
     };
 
     _.updateCoordinateFrame = function () {
         let particles = this.particles;
 
         // compute the centroid
-        let position = computePosition (particles);
+        let position = drone.position = computePosition (particles);
         this.velocity = Float3.subtract (position, this.position);
-        console.log ("Velocity: " + Float3.str (this.velocity));
+        //console.log ("Velocity: " + Float3.str (this.velocity));
 
-        // extract the coordinate frame -
+        // extract the coordinate frame - do a little bit of averaging to get a rigid frame
         let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
         let Z = Float3.normalize (Float3.subtract (particles[1].position, particles[3].position));
         let Y = Float3.normalize (Float3.subtract (particles[4].position, particles[5].position));
@@ -168,25 +171,28 @@ let Drone = function () {
 
         // reset all of the points to their base, transformed by the transform
         for (let particle of particles) {
-            //particle.position = Float4x4.preMultiply (Float4.point (particle.base), transform);
+            particle.position = Float4x4.preMultiply (Float4.point (particle.base), transform);
         }
     };
 
     _.update = function (deltaTime) {
         let particles = this.particles;
-        let subDeltaTime = deltaTime * 0.1;
-        for (let i = 0; i < 10; ++i) {
+        let subSteps = 15;
+        let subStepDeltaTime = deltaTime / subSteps;
+        for (let i = 0; i < subSteps; ++i) {
             // loop over all the particles to update them
             for (let particle of particles) {
-                particle.update(subDeltaTime);
+                particle.update(subStepDeltaTime);
             }
 
             // loop over all the constraints to apply them
             for (let constraint of this.constraints) {
-                constraint.apply(this.particles, subDeltaTime);
+                constraint.apply(this.particles, subStepDeltaTime);
             }
         }
 
+        // do a little update to keep everything normalized (numerical methods drift, this provides
+        // a regular reset to counteract the drift).
         this.updateCoordinateFrame ();
 
         // update the scene graph nodes
@@ -196,7 +202,7 @@ let Drone = function () {
             node.transform = Float4x4.chain (
                 Float4x4.scale (0.05),
                 Float4x4.translate (particle.base),
-                this.transform,
+                this.transform
                 //Float4x4.translate (particle.position)
             );
         }
@@ -218,7 +224,7 @@ let Drone = function () {
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
-                    standardUniforms.MODEL_COLOR = [1.0, 0.25, 0.25];
+                    standardUniforms.MODEL_COLOR =  (i == 5) ? [0.25, 0.25, 1.0] : [1.0, 0.25, 0.25];
                 },
                 shape: "cube",
                 children: false
