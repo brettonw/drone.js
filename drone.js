@@ -182,12 +182,70 @@ let Drone = function () {
         this.position = Float3.copy (this.velocity = Float3.create ().fill (0));
     };
 
+    _.reset2 = function (transformation) {
+        // the drone uses a shape something like a squashed octahedron, with 6 points and 13 edges
+        // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
+        // vertices have a mass of about 125g.
+        let particles = this.particles = [
+            Particle.new ({ position: [ 1.0, 0.5,  0.0], mass: 125 }), // 0
+            Particle.new ({ position: [ 0.5, 0.5,  0.5], mass: 125 }), // 1
+            Particle.new ({ position: [ 0.0, 0.5,  1.0], mass: 125 }), // 2
+            Particle.new ({ position: [-0.5, 0.5,  0.5], mass: 125 }), // 3
+            Particle.new ({ position: [-1.0, 0.5,  0.0], mass: 125 }), // 4
+            Particle.new ({ position: [-0.5, 0.5, -0.5], mass: 125 }), // 5
+            Particle.new ({ position: [ 0.0, 0.5, -1.0], mass: 125 }), // 6
+            Particle.new ({ position: [ 0.5, 0.5, -0.5], mass: 125 }), // 7
+            Particle.new ({ position: [ 0.0, 0.0,  0.0], mass: 125 })  // 8
+        ];
+
+        let constraints = this.constraints = [
+            DistanceConstraint.new ({particles: particles, a: 0, b: 1}),
+            DistanceConstraint.new ({particles: particles, a: 1, b: 2}),
+            DistanceConstraint.new ({particles: particles, a: 2, b: 3}),
+            DistanceConstraint.new ({particles: particles, a: 3, b: 4}),
+            DistanceConstraint.new ({particles: particles, a: 4, b: 5}),
+            DistanceConstraint.new ({particles: particles, a: 5, b: 6}),
+            DistanceConstraint.new ({particles: particles, a: 6, b: 7}),
+            DistanceConstraint.new ({particles: particles, a: 7, b: 0}),
+
+            DistanceConstraint.new ({particles: particles, a: 1, b: 3}),
+            DistanceConstraint.new ({particles: particles, a: 3, b: 5}),
+            DistanceConstraint.new ({particles: particles, a: 5, b: 7}),
+            DistanceConstraint.new ({particles: particles, a: 7, b: 1}),
+
+            DistanceConstraint.new ({particles: particles, a: 5, b: 1}),
+
+            /*
+            DistanceConstraint.new ({particles: particles, a: 0, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 1, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 2, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 3, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 4, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 5, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 6, b: 8}),
+            DistanceConstraint.new ({particles: particles, a: 7, b: 8})
+            */
+        ];
+
+        // the points might have been defined in a "comfortable" way, where the centroid is not at
+        // the origin, so we'll compute the centroid and relocate the points - so the position is at
+        // the origin
+        let position = computePosition (this.particles);
+        for (let particle of particles) {
+            particle.base = Float4.point (Float3.subtract (particle.position, position));
+            particle.position = Float4x4.preMultiply (particle.base, transformation);
+        }
+
+        // start the model off with no velocity...
+        this.position = Float3.copy (this.velocity = Float3.create ().fill (0));
+    };
+
     _.construct = function (parameters) {
         // copy a transformation matrix if one was provided
-        let transformation = this.transformation = Utility.defaultValue (parameters.transformation, Float4x4.identity ());
+        let transform = this.transform = Utility.defaultValue (parameters.transformation, Float4x4.identity ());
 
         // the model is assumed to start at rest
-        this.reset (transformation);
+        this.reset2 (transform);
 
 
         /*
@@ -195,8 +253,21 @@ let Drone = function () {
         this.particles[2].applyForce ([0, -15000, 0]);
         this.particles[3].applyForce ([50000, 0, 0]);
         */
-        this.particles[3].applyForce ([500, 50, 0]);
-        this.particles[5].applyForce ([0, 10000, 0]);
+        //this.particles[3].applyForce ([500, 50, 0]);
+        //this.particles[5].applyForce ([0, 10000, 0]);
+        /*
+        this.particles[3].applyForce ([-1e3,  1e3, 0]);
+        this.particles[4].applyForce ([-1e3, -1e3, 0]);
+        this.particles[5].applyForce ([ 1e3, -1e3, 0]);
+        this.particles[6].applyForce ([ 1e3,  1e3, 0]);
+
+        this.particles[1].applyForce (Float3.scale ([-1e3,  1e3, 0], -1));
+        this.particles[2].applyForce (Float3.scale ([-1e3, -1e3, 0], -1));
+        this.particles[7].applyForce (Float3.scale ([ 1e3, -1e3, 0], -1));
+        this.particles[0].applyForce (Float3.scale ([ 1e3,  1e3, 0], -1));
+        */
+        //this.particles[3].applyForce ([ 1e4, 0, 0]);
+        //this.particles[7].applyForce ([ -1e4, 0, 0]);
     };
 
     _.updateCoordinateFrame = function () {
@@ -224,16 +295,49 @@ let Drone = function () {
         }
     };
 
+    _.updateCoordinateFrame2 = function () {
+        let particles = this.particles;
+
+        // compute the centroid
+        let position = drone.position = computePosition (particles);
+        this.velocity = Float3.subtract (position, this.position);
+        //console.log ("Velocity: " + Float3.str (this.velocity));
+
+        // the Y frame will be the average of pts 1, 3, 5, and 7 minus point 8
+        Float3
+
+
+        // extract the coordinate frame - do a little bit of averaging to get a rigid frame
+        let Z = [0, 0, 1];
+
+        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[4].position));
+        let Y = Float3.normalize (Float3.subtract (particles[2].position, particles[6].position));
+
+        let Y2 = Float3.cross (Z, X);
+        let Y3 = Float3.normalize (Float3.add (Y, Y2));
+
+        let X2 = Float3.cross (Y3, Z);
+
+        let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y3, Z, position));
+
+        // reset all of the points to their base, transformed by the transform
+        for (let particle of particles) {
+            particle.position = Float4x4.preMultiply (Float4.point (particle.base), transform);
+        }
+    };
+
     _.update = function (deltaTime) {
         let particles = this.particles;
         let subSteps = 200;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
+            /*
             // apply gravity to all the particles
             for (let particle of particles) {
                 particle.applyGravity (deltaTime);
             }
             GroundConstraint.apply (particles, deltaTime);
+            */
 
             // loop over all the particles to update them
             for (let particle of particles) {
@@ -248,7 +352,7 @@ let Drone = function () {
 
         // do a little update to keep everything normalized (numerical methods drift, this provides
         // a regular reset to counteract the drift).
-        this.updateCoordinateFrame ();
+        this.updateCoordinateFrame2 ();
 
         // update the scene graph nodes
         for (let i = 0; i < particles.length;  ++i) {
@@ -258,7 +362,7 @@ let Drone = function () {
                 Float4x4.scale (0.05),
                 Float4x4.translate (particle.base),
                 this.transform
-                //Float4x4.translate (particle.position)
+                //,Float4x4.translate (particle.position)
             );
         }
     };
@@ -290,7 +394,7 @@ let Drone = function () {
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
-                    standardUniforms.MODEL_COLOR =  (i == 5) ? [0.25, 0.25, 1.0] : [1.0, 0.25, 0.25];
+                    standardUniforms.MODEL_COLOR =  (i & 0x01) ? [0.25, 0.25, 1.0] : [1.0, 0.25, 0.25];
                 },
                 shape: "cube",
                 children: false
