@@ -8,6 +8,7 @@ let globalTime = 0;
 let lastTime = new Date ().getTime ();
 
 const fpsHistoryCount = 64;
+let frameCounter = 0;
 let fpsHistory = Array (fpsHistoryCount).fill (0);
 let fpsHistoryIndex = 0;
 let fpsHistoryAverage = 0;
@@ -27,17 +28,20 @@ let drawFrame = function () {
 
         // compute the updated time
         let deltaTime = nowTime - lastTime;
-        drone.update (0.0333);
-
-        globalTime += deltaTime;
-        Thing.updateAll (globalTime);
 
         // update the fps
         fpsHistoryAverage -= fpsHistory[fpsHistoryIndex];
         fpsHistoryAverage += (fpsHistory[fpsHistoryIndex] = deltaTime);
         fpsHistoryIndex = (fpsHistoryIndex + 1) % fpsHistoryCount;
-        let fps = 1000.0 / (fpsHistoryAverage / fpsHistoryCount);
+        let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
+        let fps = 1000.0 / averageDeltaTime;
         displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
+        if (++frameCounter > fpsHistoryCount) {
+            drone.update (averageDeltaTime / 1000);
+
+            globalTime += deltaTime;
+            Thing.updateAll (globalTime);
+        }
 
         // draw again as fast as possible
         window.requestAnimationFrame (drawFrame);
@@ -55,7 +59,6 @@ let drawFrame = function () {
 
     // draw the scene
     scene.traverse (standardUniforms);
-
 };
 
 let buildScene = function () {
@@ -106,7 +109,7 @@ let buildScene = function () {
             children: false
         }));
 
-    drone = Drone.new ();
+    drone = Drone.new ({transformation: Float4x4.translate ([0, 2, 0])});
     drone.addToScene (scene);
     drawFrame ();
 };
