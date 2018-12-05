@@ -36,12 +36,13 @@ let drawFrame = function () {
         let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
         let fps = 1000.0 / averageDeltaTime;
         displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
-        if (++frameCounter > fpsHistoryCount) {
-            drone.update (averageDeltaTime / 1000);
+        //if (++frameCounter > fpsHistoryCount) {
+            //drone.update (averageDeltaTime / 1000);
+            drone.update (1.0 / 60.0);
 
             globalTime += deltaTime;
             Thing.updateAll (globalTime);
-        }
+        //}
 
         // draw again as fast as possible
         window.requestAnimationFrame (drawFrame);
@@ -62,7 +63,6 @@ let drawFrame = function () {
 };
 
 let buildScene = function () {
-
     scene = Node.new ({
         state: function (standardUniforms) {
             // ordinarily, webGl will automatically present and clear when we return control to the
@@ -120,7 +120,7 @@ let buildScene = function () {
         }))
     ;
 
-    drone = Drone.new ({transformation: Float4x4.translate ([0, 2, 0])});
+    drone = Drone.new ({transform: Float4x4.translate ([0, 2, 0])});
     drone.addToScene (scene);
     drawFrame ();
 };
