@@ -120,7 +120,7 @@ let buildScene = function () {
         }))
     ;
 
-    drone = Drone.new ({transformation: Float4x4.translate ([0, 0.5, 0])});
+    drone = Drone.new ({transformation: Float4x4.translate ([0, 2, 0])});
     drone.addToScene (scene);
     drawFrame ();
 };

@@ -16,7 +16,7 @@ let Particle = function () {
     };
 
     _.applyAcceleration = function (acceleration) {
-        let force = Float3.scale (acceleration, this.getMass ());
+        let force = Float3.scale (acceleration, this.mass);
         this.applyForce (force);
     };
 
@@ -24,14 +24,10 @@ let Particle = function () {
         this.applyAcceleration([0.0, -9.8, 0.0]);
     };
 
-    _.getMass = function () {
-        return this.mass * (this.position[1] >= 0) ? 1 : 1;
-    };
-
     _.update = function (deltaTime) {
         // compute acceleration from the forces, convert it to the change in velocity, and then
         // clear out the forces so we don't accidentally keep reapplying them
-        let deltaVelocity = Float3.scale(this.force, deltaTime / this.getMass ());
+        let deltaVelocity = Float3.scale(this.force, deltaTime / this.mass);
         this.force.fill (0);
 
         // using the midpoint method, compute the position change, assuming the delta velocity
@@ -52,27 +48,20 @@ let GroundConstraint = function () {
         for (let particle of particles) {
             if (particle.position[1] <= 0.0) {
                 let up = [0, 1, 0];
+                let xAxis = [1, 0, 0];
+                let zAxis = [0, 0, 1];
 
-                let groundVelocity = Float3.dot (particle.velocity, up);
-                if (groundVelocity <= 0) {
+                let verticalVelocity = Float3.dot (particle.velocity, up);
+                let horizontalVelocity = [Float3.dot (particle.velocity, xAxis), 0, Float3.dot (particle.velocity, zAxis)];
+                particle.applyAcceleration (Float3.scale (horizontalVelocity,  -1 / deltaTime));
+
+                if (verticalVelocity <= 0) {
                     // compute the acceleration needed to stop the particle dead
                     let elasticity = 0.8;
-                    let groundAccel = Float3.scale (up, -(1.0 + elasticity) * groundVelocity / deltaTime);
+                    let groundAccel = Float3.scale (up, -(1.0 + elasticity) * verticalVelocity / deltaTime);
                     particle.applyAcceleration (groundAccel);
                 }
-                /*
-                // a little bit of friction...
-                let groundAccel = Float3.copy ([(-0.75 / deltaTime) * particle.velocity[0], 0, (-0.75 / deltaTime) * particle.velocity[2]]);
-
-                // and apply some forces to resolve the ground situation
-                if (particle.velocity[1] < 0) {
-                    let elasticity = 0.8;
-                    groundAccel[1] = (particle.velocity[1] * -(1.0 + elasticity)) / deltaTime;
-                }
-                */
                 particle.position[1] = 0.0;
-                //particle.velocity.fill (0.0);
-                //particle.force.fill (0.0);
             }
         }
     };
@@ -105,9 +94,9 @@ let DistanceConstraint = function () {
         // relative motion between the particles with the application of this force
         let relativeVelocity = Float3.subtract (a.velocity, b.velocity);
         let springVelocity = Float3.dot(relativeVelocity, delta);
-        let totalMass = a.getMass () + b.getMass ();
-        let velocityDampingForceA = this.damping * (a.getMass () / totalMass) * springVelocity * totalMass / deltaTime;
-        let velocityDampingForceB = this.damping * (b.getMass () / totalMass) * springVelocity * totalMass / deltaTime;
+        let totalMass = a.mass + b.mass;
+        let velocityDampingForceA = this.damping * (a.mass / totalMass) * springVelocity * totalMass / deltaTime;
+        let velocityDampingForceB = this.damping * (b.mass / totalMass) * springVelocity * totalMass / deltaTime;
 
         // compute a spring force to make length be equal to constraint.length,
         // using Hooke's law, 2.0 seems to work well
@@ -137,52 +126,36 @@ let Drone = function () {
         return position;
     };
 
-    _.reset = function (transformation) {
-        // the drone uses a shape something like a squashed octahedron, with 6 points and 13 edges
-        // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
-        // vertices have a mass of about 125g.
-        let particles = this.particles = [
-            Particle.new ({ position: [ 1.00,  0.00,  0.00], mass: 125 }), // 0
-            Particle.new ({ position: [ 0.00,  0.00,  1.00], mass: 125 }), // 1
-            Particle.new ({ position: [-1.00,  0.00,  0.00], mass: 125 }), // 2
-            Particle.new ({ position: [ 0.00,  0.00, -1.00], mass: 125 }), // 3
-            Particle.new ({ position: [ 0.00,  0.15,  0.00], mass: 125 }), // 4
-            Particle.new ({ position: [ 0.00, -0.35,  0.00], mass: 125 })  // 5
-        ];
+    let computeMotor = function (particles, boundaryParticleIndexes) {
+        // compute the centroid - not a mass-based one, just the average of the three boundary
+        // particles
+        let o = Float3.create ().fill (0);
+        Float3.add (o, particles[boundaryParticleIndexs[0]].position, o);
+        Float3.add (o, particles[boundaryParticleIndexs[1]].position, o);
+        Float3.add (o, particles[boundaryParticleIndexs[2]].position, o);
+        Float3.scale (o, 1.0 / 3.0, o);
 
-        let constraints = this.constraints = [
-            DistanceConstraint.new ({particles: particles, a: 4, b: 0}),
-            DistanceConstraint.new ({particles: particles, a: 4, b: 1}),
-            DistanceConstraint.new ({particles: particles, a: 4, b: 2}),
-            DistanceConstraint.new ({particles: particles, a: 4, b: 3}),
+        // compute the plane defined by the three boundary particles
+        let ab = Float3.subtract (particles[1].position, particles[0].position);
+        let bc = Float3.subtract (particles[2].position, particles[1].position);
+        let n = Float3.cross (ab, bc);
 
-            DistanceConstraint.new ({particles: particles, a: 4, b: 5}),
+        // compute the delta vectors
+        let oa = Float3.subtract (particles[boundaryParticleIndexs[0]], o);
+        let ob = Float3.subtract (particles[boundaryParticleIndexs[1]], o);
+        let oc = Float3.subtract (particles[boundaryParticleIndexs[2]], o);
 
-            DistanceConstraint.new ({particles: particles, a: 5, b: 0}),
-            DistanceConstraint.new ({particles: particles, a: 5, b: 1}),
-            DistanceConstraint.new ({particles: particles, a: 5, b: 2}),
-            DistanceConstraint.new ({particles: particles, a: 5, b: 3}),
+        // XXX might need to scale the computed vectors to ensure that a "torque" is delivered the
+        // same to each one of the particles - if the "center" is not equidistant to all three of
+        // the particles
 
-            DistanceConstraint.new ({particles: particles, a: 0, b: 1}),
-            DistanceConstraint.new ({particles: particles, a: 1, b: 2}),
-            DistanceConstraint.new ({particles: particles, a: 2, b: 3}),
-            DistanceConstraint.new ({particles: particles, a: 3, b: 0})
-        ];
-
-        // the points might have been defined in a "comfortable" way, where the centroid is not at
-        // the origin, so we'll compute the centroid and relocate the points - so the position is at
-        // the origin
-        let position = computePosition (this.particles);
-        for (let particle of particles) {
-            particle.base = Float4.point (Float3.subtract (particle.position, position));
-            particle.position = Float4x4.preMultiply (particle.base, transformation);
-        }
-
-        // start the model off with no velocity...
-        this.position = Float3.copy (this.velocity = Float3.create ().fill (0));
+        // now compute the perpendicular vectors
+        let pa = Float3.normalize (Float3.cross (oa, n));
+        let pb = Float3.normalize (Float3.cross (ob, n));
+        let pc = Float3.normalize (Float3.cross (oc, n));
     };
 
-    _.reset2 = function (transformation) {
+    _.reset = function (transformation) {
         // the drone uses a shape something like a squashed octahedron, with 6 points and 13 edges
         // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
         // vertices have a mass of about 125g.
@@ -243,30 +216,14 @@ let Drone = function () {
         let transform = this.transform = Utility.defaultValue (parameters.transformation, Float4x4.identity ());
 
         // the model is assumed to start at rest
-        this.reset2 (transform);
+        this.reset (transform);
 
 
-        /*
-        this.particles[0].applyForce ([0, 15000, 0]);
-        this.particles[2].applyForce ([0, -15000, 0]);
-        this.particles[3].applyForce ([50000, 0, 0]);
-        */
-        //this.particles[3].applyForce ([500, 50, 0]);
-        //this.particles[5].applyForce ([0, 10000, 0]);
-        /*
-        this.particles[3].applyForce ([-1e3,  1e3, 0]);
-        this.particles[4].applyForce ([-1e3, -1e3, 0]);
-        this.particles[5].applyForce ([ 1e3, -1e3, 0]);
-        this.particles[6].applyForce ([ 1e3,  1e3, 0]);
-
-        this.particles[1].applyForce (Float3.scale ([-1e3,  1e3, 0], -1));
-        this.particles[2].applyForce (Float3.scale ([-1e3, -1e3, 0], -1));
-        this.particles[7].applyForce (Float3.scale ([ 1e3, -1e3, 0], -1));
-        this.particles[0].applyForce (Float3.scale ([ 1e3,  1e3, 0], -1));
-        */
+        // XXX REMOVE
         this.particles[3].applyForce ([ 1e4, 0, 0]);
-        this.particles[7].applyForce ([-1e4, 0, 0]);
-        this.particles[0].applyForce ([0, 1e4, 0]);
+        this.particles[7].applyForce ([-1e7, 0, 0]);
+        this.particles[0].applyForce ([0, 2e7, 0]);
+        this.particles[8].applyForce ([0, 2.8e7, 0]);
     };
 
     _.updateCoordinateFrame = function () {
@@ -301,13 +258,11 @@ let Drone = function () {
         let subSteps = 200;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
-            /*
             // apply gravity to all the particles
             for (let particle of particles) {
                 particle.applyGravity (deltaTime);
             }
             GroundConstraint.apply (particles, deltaTime);
-            */
 
             // loop over all the particles to update them
             for (let particle of particles) {
@@ -337,7 +292,9 @@ let Drone = function () {
         }
     };
 
-    _.runMotor = function (which, speed) {
+    _.runMotor = function (boundingParticles, speed) {
+        // speed is positive for clockwise, negative for counter-clockwise
+
         let particles = this.particles;
         let particle = particles[which];
 
