@@ -84,8 +84,8 @@ let Drone = function () {
         this.position = computePosition (this.particles);
         this.velocity = Float3.create ().fill (0);
 
-        //this.motors = [0.31, -0.49, 0.91, -0.49];
-        this.motors = [0.5, -0.5, 0.6, -0.5];
+        this.motors = [0, 0, 0, 0];
+        this.run (0.5, 0);// = [0.5, -0.5, 0.6, -0.5];
     };
 
     _.updateCoordinateFrame = function () {
@@ -219,6 +219,16 @@ let Drone = function () {
         a.applyForce (Float3.scale (pa, torque)).applyForce (Float3.scale (n, force));
         b.applyForce (Float3.scale (pb, torque)).applyForce (Float3.scale (n, force));
         c.applyForce (Float3.scale (pc, torque)).applyForce (Float3.scale (n, force));
+    };
+
+    _.run = function (speed, turn) {
+        // speed is a value 0..1
+        // turn is a -1..1 value that gets turned into a ratio
+        let motors02 = speed + (turn * speed);
+        let motors13 = -((2 * speed) - motors02);
+        console.log ("Run (" + motors02 + ", " + motors13 + ")");
+        this.motors[0] = this.motors[2] = motors02;
+        this.motors[1] = this.motors[3] = motors13;
     };
 
     _.getTransformationMatrix = function () {

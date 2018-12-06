@@ -140,6 +140,7 @@ let main = function () {
         if (!animateCheckbox.checked) {
             window.requestAnimationFrame (drawFrame);
         }
+        drone.run (0.5, deltaPosition[0]);
     }), 0.01);
 
     // create the render object
