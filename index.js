@@ -64,6 +64,7 @@ let drawFrame = function () {
 
 let buildScene = function () {
     scene = Node.new ({
+        transform: Float4x4.scale ([1, 1, 1]),
         state: function (standardUniforms) {
             // ordinarily, webGl will automatically present and clear when we return control to the
             // event loop from the draw function, but we overrode that to have explicit control.

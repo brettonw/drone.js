@@ -22,6 +22,7 @@ let Drone = function () {
         // the drone uses a shape something like a squashed octahedron, with 6 points and 13 edges
         // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
         // vertices have a mass of about 125g.
+        /*
         let particles = this.particles = [
             Particle.new ({ position: [ 1.0, 0.5,  0.0], mass: 125 }), // 0
             Particle.new ({ position: [ 0.5, 0.5, -0.5], mass: 125 }), // 1
@@ -33,6 +34,18 @@ let Drone = function () {
             Particle.new ({ position: [ 0.5, 0.5,  0.5], mass: 125 }), // 7
             Particle.new ({ position: [ 0.0, 0.0,  0.0], mass: 125 })  // 8
         ];
+        */
+        let particles = this.particles = [
+            Particle.new ({ position: [ 1.0, 0.5, -1.0], mass: 125 }), // 0
+            Particle.new ({ position: [ 0.0, 0.5, -1.0], mass: 125 }), // 1
+            Particle.new ({ position: [-1.0, 0.5, -1.0], mass: 125 }), // 2
+            Particle.new ({ position: [-1.0, 0.5,  0.0], mass: 125 }), // 3
+            Particle.new ({ position: [-1.0, 0.5,  1.0], mass: 125 }), // 4
+            Particle.new ({ position: [ 0.0, 0.5,  1.0], mass: 125 }), // 5
+            Particle.new ({ position: [ 1.0, 0.5,  1.0], mass: 125 }), // 6
+            Particle.new ({ position: [ 1.0, 0.5,  0.0], mass: 125 }), // 7
+            Particle.new ({ position: [ 0.0, 0.0,  0.0], mass: 125 })  // 8
+        ];
 
         // compute the mass, and the motor forces, such that all 4 motors at half speed are on a
         // balance with gravity
@@ -40,8 +53,7 @@ let Drone = function () {
         for (let particle of particles) {
             mass += particle.mass;
         }
-        this.mass = mass;
-        this.motorForce = (2 * this.mass * 9.8) / 4;
+        this.motorForce = (2 * mass * 9.8) / 4;
 
 
         // establish the distance constraints that hold the drone together
@@ -96,11 +108,11 @@ let Drone = function () {
         this.velocity = Float3.subtract (position, this.position);
         //console.log ("Velocity: " + Float3.str (this.velocity));
 
-        // the Y frame will be the average of pts 1, 3, 5, and 7 minus point 8
-        let Ymid = Float3.scale (Float3.add (Float3.add (particles[1].position, particles[3].position), Float3.add (particles[5].position, particles[7].position)), 0.25);
+        // the Y frame will be the average of pts 0, 2, 4, and 6 minus point 8
+        let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
         let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
-        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[4].position));
-        let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[2].position));
+        let X = Float3.normalize (Float3.subtract (particles[7].position, particles[3].position));
+        let Z = Float3.normalize (Float3.subtract (particles[5].position, particles[1].position));
 
         let Z2 = Float3.cross (X, Y);
         let Z3 = Float3.normalize (Float3.add (Z, Z2));
@@ -124,7 +136,7 @@ let Drone = function () {
             for (let particle of particles) {
                 particle.applyGravity (deltaTime);
             }
-            GroundConstraint.apply (particles, deltaTime);
+            //GroundConstraint.apply (particles, deltaTime);
 
             for (let i = 0, end = this.motors.length; i < end; ++i) {
                 this.runMotor (i, this.motors[i]);
@@ -176,8 +188,8 @@ let Drone = function () {
 
         // compute the plane defined by the three boundary particles
         let ab = Float3.subtract (b.position, a.position);
-        let bc = Float3.subtract (c.position, b.position);
-        let n = Float3.normalize (Float3.cross (ab, bc));
+        let ac = Float3.subtract (c.position, a.position);
+        let n = Float3.normalize (Float3.cross (ab, ac));
 
         // compute the delta vectors
         let oa = Float3.subtract (a.position, o);
@@ -195,9 +207,9 @@ let Drone = function () {
         // probably not equidistant to all three of the boundary particles. this bakes the
         // distribution of torque and force into the computed vectors, making application of those
         // elements simple
-        let pa = Float3.scale (Float3.normalize (Float3.cross (oa, n)), 1.0 / oaLength);
-        let pb = Float3.scale (Float3.normalize (Float3.cross (ob, n)), 1.0 / obLength);
-        let pc = Float3.scale (Float3.normalize (Float3.cross (oc, n)), 1.0 / ocLength);
+        let pa = Float3.scale (Float3.normalize (Float3.cross (n, oa)), 1.0 / oaLength);
+        let pb = Float3.scale (Float3.normalize (Float3.cross (n, ob)), 1.0 / obLength);
+        let pc = Float3.scale (Float3.normalize (Float3.cross (n, oc)), 1.0 / ocLength);
 
         // apply the motor forces
         torque /= 3.0;
