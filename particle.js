@@ -3,6 +3,14 @@
 let Particle = function () {
     let _ = Object.create (ClassBase);
 
+    let validateFloat3 = function (float3) {
+        for (let component of float3) {
+            if (isNaN (component)) {
+                console.log ("isNan");
+            }
+        }
+    };
+
     _.construct = function (parameters) {
         this.position = Float3.copy (parameters.position);
         this.velocity = Float3.create ().fill (0);
@@ -12,18 +20,22 @@ let Particle = function () {
     };
 
     _.applyForce = function (force) {
+        validateFloat3 (force);
         this.force = Float3.add (this.force, force);
+        validateFloat3 (this.force);
         return this;
     };
 
     _.applyAcceleration = function (acceleration) {
+        // check that acceleration is valid
+        validateFloat3 (acceleration);
         let force = Float3.scale (acceleration, this.mass);
         this.applyForce (force);
         return this;
     };
 
     _.applyGravity = function (deltaTime) {
-        this.applyAcceleration([0.0, -9.8, 0.0]);
+        this.applyAcceleration(Float3.copy ([0.0, -9.8, 0.0]));
         return this;
     };
 

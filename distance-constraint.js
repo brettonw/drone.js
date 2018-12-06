@@ -4,22 +4,22 @@ let DistanceConstraint = function () {
     let _ = Object.create (ClassBase);
 
     _.construct = function (parameters) {
-        this.a = parameters.a;
-        this.b = parameters.b;
-        this.length = Float3.norm (Float3.subtract (parameters.particles[this.a].position, parameters.particles[this.b].position))
+        let a = this.a = parameters.particles[parameters.a];
+        let b = this.b = parameters.particles[parameters.b];
+        this.length = Float3.norm (Float3.subtract (a.position, b.position))
 
-        // good defaults, damping: 0.5, springConstant (aka: k): 2.0
-        this.damping = Utility.defaultValue (parameters.damping, 0.4);
-        this.springConstant = Utility.defaultValue (parameters.springConstant, 1.95);
-        console.log ("DistanceConstraint: (" + this.a + " -> " + this.b + "), length: " + this.length.toFixed(3));
+        // good defaults, damping: 0.333, springConstant (aka: k): 2.0
+        this.damping = Utility.defaultValue (parameters.damping, 0.333);
+        this.springConstant = Utility.defaultValue (parameters.springConstant, 2.0);
+        console.log ("DistanceConstraint: (" + parameters.a + " -> " + parameters.b + "), length: " + this.length.toFixed(3));
     };
 
-    _.apply = function (particles, deltaTime) {
-        let a = particles[this.a];
-        let b = particles[this.b];
+    _.apply = function (deltaTime) {
+        let a = this.a;
+        let b = this.b;
         let delta = Float3.subtract (a.position, b.position);
         let length = Float3.norm (delta);
-        delta = Float3.scale (delta, 1 / length);
+        delta = Float3.scale (delta, 1.0 / length);
 
         // compute the relative velocity damping force to apply, the goal here is to halt all
         // relative motion between the particles with the application of this force

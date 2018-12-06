@@ -72,7 +72,7 @@ let Drone = function () {
             DistanceConstraint.new ({particles: particles, a: 5, b: 7}),
             DistanceConstraint.new ({particles: particles, a: 7, b: 1}),
 
-            DistanceConstraint.new ({particles: particles, a: 5, b: 1}),
+            DistanceConstraint.new ({particles: particles, a: 3, b: 7}),
 
             DistanceConstraint.new ({particles: particles, a: 0, b: 8}),
             DistanceConstraint.new ({particles: particles, a: 1, b: 8}),
@@ -97,7 +97,7 @@ let Drone = function () {
         this.position = computePosition (this.particles);
         this.velocity = Float3.create ().fill (0);
 
-        this.motors = [0.5, -0.5, 0.5, -0.5];
+        this.motors = [0.51, -0.5, 0.51, -0.5];
     };
 
     _.updateCoordinateFrame = function () {
@@ -111,8 +111,8 @@ let Drone = function () {
         // the Y frame will be the average of pts 0, 2, 4, and 6 minus point 8
         let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
         let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
-        let X = Float3.normalize (Float3.subtract (particles[7].position, particles[3].position));
-        let Z = Float3.normalize (Float3.subtract (particles[5].position, particles[1].position));
+        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
+        let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[0].position));
 
         let Z2 = Float3.cross (X, Y);
         let Z3 = Float3.normalize (Float3.add (Z, Z2));
@@ -123,10 +123,11 @@ let Drone = function () {
 
         // reset all of the points to their base, transformed by the transform
         for (let particle of particles) {
-            particle.position = Float4x4.preMultiply (Float4.point (particle.base), transform);
+            particle.position = Float4x4.preMultiply (particle.base, transform);
         }
     };
 
+    let stun = false;
     _.update = function (deltaTime) {
         let particles = this.particles;
         let subSteps = 200;
@@ -134,17 +135,18 @@ let Drone = function () {
         for (let i = 0; i < subSteps; ++i) {
             // apply gravity to all the particles
             for (let particle of particles) {
-                particle.applyGravity (deltaTime);
+                particle.applyGravity (subStepDeltaTime);
             }
-            //GroundConstraint.apply (particles, deltaTime);
-
-            for (let i = 0, end = this.motors.length; i < end; ++i) {
-                this.runMotor (i, this.motors[i]);
+            stun = GroundConstraint.apply (particles, subStepDeltaTime) && stun;
+            if (! stun) {
+                for (let i = 0, end = this.motors.length; i < end; ++i) {
+                    this.runMotor (i, this.motors[i]);
+                }
             }
 
             // loop over all the constraints to apply them
             for (let constraint of this.constraints) {
-                constraint.apply(this.particles, subStepDeltaTime);
+                constraint.apply(subStepDeltaTime);
             }
 
             // loop over all the particles to update them
@@ -165,15 +167,25 @@ let Drone = function () {
                 Float4x4.scale (0.05),
                 Float4x4.translate (particle.base),
                 this.transform
-                //,Float4x4.translate (particle.position)
+                //Float4x4.translate (particle.position)
             );
         }
     };
 
-    let runMotorInternal = function (particles, boundaryParticleIndexes, torque, force) {
-        const oneThird = 1.0 / 3.0;
+    let boundaryParticleIndexGroups = [
+        [0, 1, 7],
+        [2, 3, 1],
+        [4, 5, 3],
+        [6, 7, 5]
+    ];
+
+    _.runMotor = function (which, speed) {
+        // speed is positive for clockwise, negative for counter-clockwise [-1..1]
+
         // the motor is mounted in a triangular bracket at three points, and to apply the motor
         // forces we compute the torque application vectors and the force application vectors
+        let particles = this.particles;
+        let boundaryParticleIndexes = boundaryParticleIndexGroups[which];
         let a = particles[boundaryParticleIndexes[0]];
         let b = particles[boundaryParticleIndexes[1]];
         let c = particles[boundaryParticleIndexes[2]];
@@ -181,10 +193,10 @@ let Drone = function () {
         // compute the origin, o - not a mass-based centroid, just the average of the three boundary
         // particles
         let o = Float3.create ().fill (0);
-        Float3.add (o, a.position, o);
-        Float3.add (o, b.position, o);
-        Float3.add (o, c.position, o);
-        Float3.scale (o, oneThird, o);
+        o = Float3.add (o, a.position);
+        o = Float3.add (o, b.position);
+        o = Float3.add (o, c.position);
+        o = Float3.scale (o, 1.0 / 3.0);
 
         // compute the plane defined by the three boundary particles
         let ab = Float3.subtract (b.position, a.position);
@@ -211,31 +223,14 @@ let Drone = function () {
         let pb = Float3.scale (Float3.normalize (Float3.cross (n, ob)), 1.0 / obLength);
         let pc = Float3.scale (Float3.normalize (Float3.cross (n, oc)), 1.0 / ocLength);
 
+        // compute the torque and thrust forces for the motor at speed
+        let torque = (1e4 * speed) / 3.0;
+        let force = (this.motorForce * Math.abs (speed)) / 3.0;
+
         // apply the motor forces
-        torque /= 3.0;
-        force /= 3.0;
         a.applyForce (Float3.scale (pa, torque)).applyForce (Float3.scale (n, force));
         b.applyForce (Float3.scale (pb, torque)).applyForce (Float3.scale (n, force));
         c.applyForce (Float3.scale (pc, torque)).applyForce (Float3.scale (n, force));
-    };
-
-    _.runMotor = function (which, speed) {
-        // speed is positive for clockwise, negative for counter-clockwise [-1..1]
-
-        // compute the torque and thrust forces for the motor at speed
-        let torque = 1e3 * speed;
-        let force = this.motorForce * Math.abs (speed);
-
-        // map which motor to the runner
-        let boundaryParticleIndexes = [
-            [0, 1, 7],
-            [2, 3, 1],
-            [4, 5, 3],
-            [6, 7, 5]
-        ][which];
-
-        // run the requested motor
-        runMotorInternal(this.particles, boundaryParticleIndexes, torque, force);
     };
 
     _.getTransformationMatrix = function () {
