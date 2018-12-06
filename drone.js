@@ -85,7 +85,7 @@ let Drone = function () {
         this.position = computePosition (this.particles);
         this.velocity = Float3.create ().fill (0);
 
-        this.motors = [0.5, -0.501, 0.501, -0.5];
+        this.motors = [0.5, -0.5, 0.5, -0.5];
     };
 
     _.updateCoordinateFrame = function () {
