@@ -18,7 +18,7 @@ let GroundConstraint = function () {
                     particle.applyAcceleration (Float3.copy (groundAccel));
                 }
                 particle.position[1] = 0.0;
-                //stun = true;
+                stun = true;
             }
         }
         return stun;

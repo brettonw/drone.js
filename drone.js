@@ -22,29 +22,16 @@ let Drone = function () {
         // the drone uses a shape something like a squashed octahedron, with 6 points and 13 edges
         // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
         // vertices have a mass of about 125g.
-        /*
         let particles = this.particles = [
-            Particle.new ({ position: [ 1.0, 0.5,  0.0], mass: 125 }), // 0
-            Particle.new ({ position: [ 0.5, 0.5, -0.5], mass: 125 }), // 1
-            Particle.new ({ position: [ 0.0, 0.5, -1.0], mass: 125 }), // 2
-            Particle.new ({ position: [-0.5, 0.5, -0.5], mass: 125 }), // 3
-            Particle.new ({ position: [-1.0, 0.5,  0.0], mass: 125 }), // 4
-            Particle.new ({ position: [-0.5, 0.5,  0.5], mass: 125 }), // 5
-            Particle.new ({ position: [ 0.0, 0.5,  1.0], mass: 125 }), // 6
-            Particle.new ({ position: [ 0.5, 0.5,  0.5], mass: 125 }), // 7
-            Particle.new ({ position: [ 0.0, 0.0,  0.0], mass: 125 })  // 8
-        ];
-        */
-        let particles = this.particles = [
-            Particle.new ({ position: [ 1.0, 0.5, -1.0], mass: 125 }), // 0
-            Particle.new ({ position: [ 0.0, 0.5, -1.0], mass: 125 }), // 1
-            Particle.new ({ position: [-1.0, 0.5, -1.0], mass: 125 }), // 2
-            Particle.new ({ position: [-1.0, 0.5,  0.0], mass: 125 }), // 3
-            Particle.new ({ position: [-1.0, 0.5,  1.0], mass: 125 }), // 4
-            Particle.new ({ position: [ 0.0, 0.5,  1.0], mass: 125 }), // 5
-            Particle.new ({ position: [ 1.0, 0.5,  1.0], mass: 125 }), // 6
-            Particle.new ({ position: [ 1.0, 0.5,  0.0], mass: 125 }), // 7
-            Particle.new ({ position: [ 0.0, 0.0,  0.0], mass: 125 })  // 8
+            Particle.new ({ position: [ 1.0,  0.5, -1.0], mass: 125 }), // 0
+            Particle.new ({ position: [ 0.0,  0.5, -0.6], mass: 125 }), // 1
+            Particle.new ({ position: [-1.0,  0.5, -1.0], mass: 125 }), // 2
+            Particle.new ({ position: [-0.6,  0.5,  0.0], mass: 125 }), // 3
+            Particle.new ({ position: [-1.0,  0.5,  1.0], mass: 125 }), // 4
+            Particle.new ({ position: [ 0.0,  0.5,  0.6], mass: 125 }), // 5
+            Particle.new ({ position: [ 1.0,  0.5,  1.0], mass: 125 }), // 6
+            Particle.new ({ position: [ 0.6,  0.5,  0.0], mass: 125 }), // 7
+            Particle.new ({ position: [ 0.0, -0.2,  0.0], mass: 125 })  // 8
         ];
 
         // compute the mass, and the motor forces, such that all 4 motors at half speed are on a
@@ -97,7 +84,8 @@ let Drone = function () {
         this.position = computePosition (this.particles);
         this.velocity = Float3.create ().fill (0);
 
-        this.motors = [0.51, -0.5, 0.51, -0.5];
+        //this.motors = [0.31, -0.49, 0.91, -0.49];
+        this.motors = [0.5, -0.5, 0.6, -0.5];
     };
 
     _.updateCoordinateFrame = function () {

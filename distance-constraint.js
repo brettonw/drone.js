@@ -9,7 +9,7 @@ let DistanceConstraint = function () {
         this.length = Float3.norm (Float3.subtract (a.position, b.position))
 
         // good defaults, damping: 0.333, springConstant (aka: k): 2.0
-        this.damping = Utility.defaultValue (parameters.damping, 0.333);
+        this.damping = Utility.defaultValue (parameters.damping, 1.0 / 3.0);
         this.springConstant = Utility.defaultValue (parameters.springConstant, 2.0);
         console.log ("DistanceConstraint: (" + parameters.a + " -> " + parameters.b + "), length: " + this.length.toFixed(3));
     };
