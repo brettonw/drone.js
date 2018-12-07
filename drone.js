@@ -224,8 +224,8 @@ let Drone = function () {
     _.run = function (speed, turn) {
         // speed is a value 0..1
         // turn is a -1..1 value that gets turned into a ratio
-        let motors02 = speed + (turn * speed);
-        let motors13 = -((2 * speed) - motors02);
+        let motors02 = -(speed + (turn * speed));;
+        let motors13 = ((2 * speed) + motors02);
         console.log ("Run (speed = " + speed + ", turn = " + turn + ", 02 = " + motors02 + ", 13 = " + motors13 + ")");
         this.motors[0] = this.motors[2] = motors02;
         this.motors[1] = this.motors[3] = motors13;
