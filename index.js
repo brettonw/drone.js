@@ -18,14 +18,41 @@ let drone;
 let animateCheckbox;
 let displayFpsSpan;
 
-let drawFrame = function () {
-    if (document.hidden) {
-        animateCheckbox.checked = false;
-        return;
-    }
-    let nowTime = new Date ().getTime ();
-    if (animateCheckbox.checked) {
+let visibilityState = document.visibilityState;
+document.addEventListener("visibilitychange", function (event) {
+    //console.log ("Visbility State changed to '" + document.visibilityState + "'");
+    visibilityState = document.visibilityState;
+    updateRunFocus ();
+});
 
+let windowFocusState = "focus";
+window.addEventListener("focus", function (event) {
+    windowFocusState = "focus";
+    //console.log ("Window Focus");
+    updateRunFocus ();
+});
+window.addEventListener("blur", function (event) {
+    windowFocusState = "blur";
+    //console.log ("Window Blur");
+    updateRunFocus ();
+});
+
+let runFocus = true;
+let updateRunFocus = function () {
+    if ((visibilityState === "visible") && (windowFocusState === "focus")) {
+        runFocus = true;
+        document.getElementById("render-canvas").focus ();
+        drawFrame ();
+    }
+    else {
+        runFocus = false;
+    }
+};
+
+
+let drawFrame = function () {
+    let nowTime = new Date ().getTime ();
+    if ((animateCheckbox.checked) && (runFocus === true)) {
         // compute the updated time
         let deltaTime = nowTime - lastTime;
 
@@ -140,7 +167,7 @@ let main = function () {
         if (!animateCheckbox.checked) {
             window.requestAnimationFrame (drawFrame);
         }
-        drone.run (0.5, deltaPosition[0]);
+        drone.run (0.5 - deltaPosition[1], deltaPosition[0]);
     }), 0.01);
 
     // create the render object

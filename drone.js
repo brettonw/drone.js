@@ -125,8 +125,8 @@ let Drone = function () {
             for (let particle of particles) {
                 particle.applyGravity (subStepDeltaTime);
             }
-            stun = GroundConstraint.apply (particles, subStepDeltaTime) && stun;
-            if (! stun) {
+            stun = GroundConstraint.apply (particles, subStepDeltaTime) || stun;
+            if (stun === false) {
                 for (let i = 0, end = this.motors.length; i < end; ++i) {
                     this.runMotor (i, this.motors[i]);
                 }
