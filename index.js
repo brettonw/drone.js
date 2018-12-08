@@ -7,7 +7,11 @@ let standardUniforms = Object.create (null);
 let globalTime = 0;
 let lastTime = new Date ().getTime ();
 
-const fpsHistoryCount = 64;
+let targetFrameRate = 30;
+let targetFrameDeltaTimeMs = 1000.0 * (1.0 / targetFrameRate)* 0.9;
+
+
+const fpsHistoryCount = 32;
 let frameCounter = 0;
 let fpsHistory = Array (fpsHistoryCount).fill (0);
 let fpsHistoryIndex = 0;
@@ -49,23 +53,29 @@ let updateRunFocus = function () {
     }
 };
 
-
 let drawFrame = function () {
     let nowTime = new Date ().getTime ();
+
     if ((animateCheckbox.checked) && (runFocus === true)) {
-        // compute the updated time
+        // compute the updated time (in ms)
         let deltaTime = nowTime - lastTime;
+        if (deltaTime < targetFrameDeltaTimeMs) {
+            // if not enough time has past, skip this frame...
+            window.requestAnimationFrame (drawFrame);
+            return;
+        }
 
         // update the fps
         fpsHistoryAverage -= fpsHistory[fpsHistoryIndex];
         fpsHistoryAverage += (fpsHistory[fpsHistoryIndex] = deltaTime);
         fpsHistoryIndex = (fpsHistoryIndex + 1) % fpsHistoryCount;
-        let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
-        let fps = 1000.0 / averageDeltaTime;
-        displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
         if (++frameCounter > fpsHistoryCount) {
-            drone.update (averageDeltaTime / 1000);
-            //drone.update (1.0 / 60.0);
+            let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
+            let fps = 1000.0 / averageDeltaTime;
+            displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
+
+            deltaTime = 1.0 / targetFrameRate;
+            drone.update (deltaTime);
 
             globalTime += deltaTime;
             Thing.updateAll (globalTime);
@@ -167,7 +177,7 @@ let main = function () {
         if (!animateCheckbox.checked) {
             window.requestAnimationFrame (drawFrame);
         }
-        drone.run (0.5 - deltaPosition[1], deltaPosition[0]);
+        drone.run (0.5 - (10.0 * deltaPosition[1]), 100.0 * deltaPosition[0]);
     }), 0.01);
 
     // create the render object

@@ -9,7 +9,7 @@ let GroundConstraint = function () {
             if (particle.position[1] <= 0.0) {
                 let verticalVelocity = particle.velocity[1];
                 let horizontalVelocity = [particle.velocity[0], 0, particle.velocity[2]];
-                particle.applyAcceleration (Float3.scale (horizontalVelocity,  -0.5 / deltaTime));
+                particle.applyAcceleration (Float3.scale (horizontalVelocity,  -0.1 / deltaTime));
 
                 if (verticalVelocity <= 0) {
                     // compute the acceleration needed to stop the particle dead
