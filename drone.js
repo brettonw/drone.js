@@ -85,7 +85,7 @@ let Drone = function () {
         this.velocity = Float3.create ().fill (0);
 
         this.motors = [0, 0, 0, 0];
-        this.run (0.5, 0);// = [0.5, -0.5, 0.6, -0.5];
+        this.run (0.5, 0, {x: 0, y: 0});// = [0.5, -0.5, 0.6, -0.5];
     };
 
     _.updateCoordinateFrame = function () {
@@ -221,14 +221,28 @@ let Drone = function () {
         c.applyForce (Float3.scale (pc, torque)).applyForce (Float3.scale (n, force));
     };
 
-    _.run = function (speed, turn) {
-        // speed is a value 0..1
-        // turn is a -1..1 value that gets turned into a ratio
-        let motors02 = -(speed + (turn * speed));;
-        let motors13 = ((2 * speed) + motors02);
-        console.log ("Run (speed = " + speed + ", turn = " + turn + ", 02 = " + motors02 + ", 13 = " + motors13 + ")");
-        this.motors[0] = this.motors[2] = motors02;
-        this.motors[1] = this.motors[3] = motors13;
+    _.run = function (speed, turn, tilt) {
+        // speed is a value 0..1, assuming motors are always running in a direction that produces lift
+
+        // motors are configured like this:
+        // 1 0
+        // 2 3
+        // 0 and 2 are run clockwise, 1 and 3 are run counter-clockwise
+        // turn is a -1..1 value that gets turned into a ratio of 0-2 to 1-3 (1 is all 1-3, -1 is all 0-2)
+        let turnRatio02 = turn + 1.0;
+        let turnRatio13 = 2.0 - turnRatio02;
+
+        // now tilt is an x-y vector, where each axis is a ratio of motors 1-0 to 2-3, or motors 1-2 to 0-3
+        let xTiltRatio12 = tilt.x + 1.0;
+        let xTiltRatio03 = 2.0 - xTiltRatio12;
+
+        let yTiltRatio01 = tilt.y + 1.0;
+        let yTiltRatio23 = 2.0 - yTiltRatio01;
+
+        this.motors[0] = speed * turnRatio02 * xTiltRatio03 * yTiltRatio01;
+        this.motors[1] = -speed * turnRatio13 * xTiltRatio12 * yTiltRatio01;
+        this.motors[2] = speed * turnRatio02 * xTiltRatio12 * yTiltRatio23;
+        this.motors[3] = -speed * turnRatio13 * xTiltRatio03 * yTiltRatio23;
     };
 
     _.getTransformationMatrix = function () {
@@ -241,7 +255,7 @@ let Drone = function () {
     };
 
     _.addToScene = function (parentNode) {
-        // put down the platonic we will use for each corner
+        // put down the platonic solid we will use for each corner
         for (let i = 0; i < this.particles.length;  ++i) {
             let red = i / this.particles.length;
             let blue = 1.0 - red;

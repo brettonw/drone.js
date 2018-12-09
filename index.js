@@ -7,9 +7,8 @@ let standardUniforms = Object.create (null);
 let globalTime = 0;
 let lastTime = new Date ().getTime ();
 
-let targetFrameRate = 30;
-let targetFrameDeltaTimeMs = 1000.0 * (1.0 / targetFrameRate)* 0.9;
-
+const targetFrameRate = 30;
+const targetFrameDeltaTimeMs = 1000.0 * (1.0 / targetFrameRate)* 0.9;
 
 const fpsHistoryCount = 32;
 let frameCounter = 0;
@@ -73,6 +72,9 @@ let drawFrame = function () {
             let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
             let fps = 1000.0 / averageDeltaTime;
             displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
+
+            let controller = navigator.getGamepads ()[0];
+            drone.run ((1.0 + -controller.axes[3]) * 0.5, controller.axes[2], {x: controller.axes[0], y: controller.axes[1]});
 
             deltaTime = 1.0 / targetFrameRate;
             drone.update (deltaTime);
@@ -170,22 +172,39 @@ let clickAnimateCheckbox = function () {
     }
 };
 
+let waitForController = function (onConnect) {
+    if ("getGamepads" in navigator) {
+        console.log ("Has Gamepad API");
+        let checkForGamePad = setInterval (function () {
+            //console.log ('checkForGamePad');
+            if (navigator.getGamepads ()[0]) {
+                clearInterval (checkForGamePad);
+                onConnect ();
+            }
+        }, 500);
+    }
+};
+
 let main = function () {
     animateCheckbox = document.getElementById("animateCheckbox");
     displayFpsSpan = document.getElementById("displayFpsSpan");
+    /*
     MouseTracker.new ("render-canvas", OnReady.new (null, function (deltaPosition) {
         if (!animateCheckbox.checked) {
             window.requestAnimationFrame (drawFrame);
         }
         drone.run (0.5 - (10.0 * deltaPosition[1]), 100.0 * deltaPosition[0]);
     }), 0.01);
+    */
 
-    // create the render object
-    render = Render.new ({
-        canvasId: "render-canvas",
-        loaders: [
-            LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems ("grid-16x16", { generateMipMap: true }),
-        ],
-        onReady: OnReady.new (null, buildScene)
+    waitForController (function () {
+        // create the render object
+        render = Render.new ({
+            canvasId: "render-canvas",
+            loaders: [
+                LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems ("grid-16x16", { generateMipMap: true }),
+            ],
+            onReady: OnReady.new (null, buildScene)
+        });
     });
 };
