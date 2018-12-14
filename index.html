@@ -18,7 +18,7 @@
                 <canvas id="render-canvas" style="border:none;margin:0;" width="854px" height="480px" tabindex="0"></canvas>
             </div>
             <div style="width: 854px;">
-                <div style="display: inline-block;"><input type="checkbox" id="animateCheckbox" onchange="clickAnimateCheckbox ();" CHECKED> Animated</div>
+                <div style="display: inline-block;"><input type="checkbox" id="animateCheckbox" onchange="clickAnimateCheckbox ();"> Animated</div>
                 <div style="display: inline-block;float:right;" id="displayFpsSpan">0</div>
             </div>
         </div>
@@ -26,8 +26,10 @@
 </html>
 
 <script src="https://brettonw.github.io/webgl.js/src/main/webapp/webgl-debug.js"></script>
-<script src="particle.js"></script>
-<script src="ground-constraint.js"></script>
-<script src="distance-constraint.js"></script>
-<script src="drone.js"></script>
-<script src="index.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/particle.js"></script>
+<script src="js/ground-constraint.js"></script>
+<script src="js/distance-constraint.js"></script>
+<script src="js/pid.js"></script>
+<script src="js/drone.js"></script>
+<script src="js/index.js"></script>

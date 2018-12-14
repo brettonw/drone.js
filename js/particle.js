@@ -35,7 +35,7 @@ let Particle = function () {
     };
 
     _.applyGravity = function (deltaTime) {
-        this.applyAcceleration(Float3.copy ([0.0, -9.8, 0.0]));
+        this.applyAcceleration(Float3.copy ([0.0, -Math.GRAVITY, 0.0]));
         return this;
     };
 

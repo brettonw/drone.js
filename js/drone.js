@@ -40,7 +40,7 @@ let Drone = function () {
         for (let particle of particles) {
             mass += particle.mass;
         }
-        this.motorForce = (2 * mass * 9.8) / 4;
+        this.motorForce = (2 * mass * Math.GRAVITY) / 4;
 
 
         // establish the distance constraints that hold the drone together
@@ -85,15 +85,23 @@ let Drone = function () {
         this.velocity = Float3.create ().fill (0);
 
         this.motors = [0, 0, 0, 0];
-        this.run (0.5, 0, {x: 0, y: 0});// = [0.5, -0.5, 0.6, -0.5];
+
+        this.controller = {
+            altitude: PID.new ({ gains: { p: 1.0, i: 0.0, d: 15.0 }}),
+            orientation: PID.new ({ gains: { p: 5.0, i: 0.0, d: 50.0 }}),
+            x: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }}),
+            y: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }})
+        };
+
+        this.run (0.5, 0, {x: 0, y: 0});
     };
 
-    _.updateCoordinateFrame = function () {
+    _.updateCoordinateFrame = function (deltaTime) {
         let particles = this.particles;
 
         // compute the centroid
         let position = drone.position = computePosition (particles);
-        this.velocity = Float3.subtract (position, this.position);
+        this.velocity = Float3.scale (Float3.subtract (position, this.position), 1.0 / deltaTime);
         //console.log ("Velocity: " + Float3.str (this.velocity));
 
         // the Y frame will be the average of pts 0, 2, 4, and 6 minus point 8
@@ -118,7 +126,7 @@ let Drone = function () {
     let stun = false;
     _.update = function (deltaTime) {
         let particles = this.particles;
-        let subSteps = 200;
+        let subSteps = 100;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
             // apply gravity to all the particles
@@ -155,7 +163,7 @@ let Drone = function () {
                 Float4x4.scale (0.05),
                 Float4x4.translate (particle.base),
                 this.transform
-                //Float4x4.translate (particle.position)
+                //,Float4x4.translate (particle.position)
             );
         }
     };
@@ -236,13 +244,49 @@ let Drone = function () {
         let xTiltRatio12 = tilt.x + 1.0;
         let xTiltRatio03 = 2.0 - xTiltRatio12;
 
-        let yTiltRatio01 = tilt.y + 1.0;
-        let yTiltRatio23 = 2.0 - yTiltRatio01;
+        let zTiltRatio01 = tilt.z + 1.0;
+        let zTiltRatio23 = 2.0 - zTiltRatio01;
 
-        this.motors[0] = speed * turnRatio02 * xTiltRatio03 * yTiltRatio01;
-        this.motors[1] = -speed * turnRatio13 * xTiltRatio12 * yTiltRatio01;
-        this.motors[2] = speed * turnRatio02 * xTiltRatio12 * yTiltRatio23;
-        this.motors[3] = -speed * turnRatio13 * xTiltRatio03 * yTiltRatio23;
+        this.motors[0] = speed * turnRatio02 * xTiltRatio03 * zTiltRatio01;
+        this.motors[1] = -speed * turnRatio13 * xTiltRatio12 * zTiltRatio01;
+        this.motors[2] = speed * turnRatio02 * xTiltRatio12 * zTiltRatio23;
+        this.motors[3] = -speed * turnRatio13 * xTiltRatio03 * zTiltRatio23;
+    };
+
+    _.runController = function (xVel, zVel, altitude) {
+        /*
+        console.log ("TRANSFORM");
+        let axisNames = ["X-axis:    ", "Y-axis:    ", "Z-axis:    ", "Translate: "];
+        for (let i = 0; i < 4; ++i) {
+            let line = axisNames[i];
+            let separator = "";
+            let row = i * 4;
+            for (let j = 0; j < 4; ++j) {
+                line += separator + this.transform[row + j].toFixed(3);
+                separator = ", ";
+            }
+            console.log (line);
+        }
+        */
+
+        let controller = this.controller;
+
+        // compute the altitude of the drone using the y component of the translation
+        let speed = (controller.altitude.update (this.transform[13], altitude) + 1.0) / 2.0;
+
+        // compute the orientation of the drone using the x/z components of the x axis - our goal is
+        // to always orient the drone with the x/z axes
+        let orientation = Math.atan2(this.transform[2], this.transform[0]) / Math.PI;
+        let turn = -controller.orientation.update (orientation, 0.0);
+
+        // compute the tilt of the drone using the x/z components of the y axis
+        let tilt = {
+            x: controller.x.update (this.transform[4], xVel),
+            z: controller.y.update (this.transform[6], zVel)
+        };
+
+        // give the drone the inputs
+        this.run (speed, turn, tilt);
     };
 
     _.getTransformationMatrix = function () {
