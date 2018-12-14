@@ -52,6 +52,12 @@ let updateRunFocus = function () {
     }
 };
 
+let countdownDuration = 10;
+let countdownTime = 10;
+let locX = 0;
+let locY = 2.5;
+let locZ = 0;
+
 let drawFrame = function () {
     let nowTime = new Date ().getTime ();
 
@@ -73,21 +79,25 @@ let drawFrame = function () {
             let fps = 1000.0 / averageDeltaTime;
             displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
 
-            let controller = navigator.getGamepads ()[0];
-            let axes = controller ? controller.axes : [0, 0, 0, 0];
-            // go in a little circle, 3 seconds long
-            let circleDuration = 5;
-            let circleTime = globalTime / circleDuration;
-            circleTime = (circleTime - Math.floor (circleTime)) * Math.TWO_PI;
-            let speed = 0.5;
-            let x = Math.cos (circleTime * speed);
-            drone.runController (speed * Math.cos (circleTime), speed * Math.sin (circleTime), 2.0);
-
             deltaTime = 1.0 / targetFrameRate;
             drone.update (deltaTime);
 
             globalTime += deltaTime;
             Thing.updateAll (globalTime);
+
+            countdownTime -= deltaTime;
+            if (countdownTime < 0) {
+                countdownTime = countdownDuration;
+                /*
+                let controller = navigator.getGamepads()[0];
+                let axes = controller ? controller.axes : [0, 0, 0, 0];
+                */
+                let radius = 10.0;
+                locX = Math.floor (Math.random() * radius * 2) - radius;
+                locY = 2.0 + Math.floor (Math.random() * 4);
+                locZ = Math.floor (Math.random() * radius * 2) - radius;
+            }
+            drone.runController (locX, locY, locZ);
         }
 
         // draw again as fast as possible
@@ -96,7 +106,7 @@ let drawFrame = function () {
     lastTime = nowTime;
 
     standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 1000);
-    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([-2, 5, 10], drone.position, [0, 1, 0]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([-7, 10, 10], drone.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms

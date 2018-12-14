@@ -87,13 +87,17 @@ let Drone = function () {
         this.motors = [0, 0, 0, 0];
 
         this.controller = {
-            altitude: PID.new ({ gains: { p: 1.0, i: 0.0, d: 15.0 }}),
             orientation: PID.new ({ gains: { p: 5.0, i: 0.0, d: 50.0 }}),
-            x: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }}),
-            y: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }})
+            tilt: {
+                x: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }}),
+                z: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }})
+            },
+            location: {
+                x: PID.new ({ gains: { p: 0.25, i: 0.0, d: 12.0 }}),
+                y: PID.new ({ gains: { p: 1.0, i: 0.0, d: 15.0 }}),
+                z: PID.new ({ gains: { p: 0.25, i: 0.0, d: 12.0 }})
+            }
         };
-
-        this.run (0.5, 0, {x: 0, y: 0});
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -253,7 +257,7 @@ let Drone = function () {
         this.motors[3] = -speed * turnRatio13 * xTiltRatio03 * zTiltRatio23;
     };
 
-    _.runController = function (xVel, zVel, altitude) {
+    _.runController = function (x, y, z) {
         /*
         console.log ("TRANSFORM");
         let axisNames = ["X-axis:    ", "Y-axis:    ", "Z-axis:    ", "Translate: "];
@@ -272,17 +276,22 @@ let Drone = function () {
         let controller = this.controller;
 
         // compute the altitude of the drone using the y component of the translation
-        let speed = (controller.altitude.update (this.transform[13], altitude) + 1.0) / 2.0;
+        let speed = (controller.location.y.update (this.transform[13], y) + 1.0) / 2.0;
 
         // compute the orientation of the drone using the x/z components of the x axis - our goal is
         // to always orient the drone with the x/z axes
         let orientation = Math.atan2(this.transform[2], this.transform[0]) / Math.PI;
         let turn = -controller.orientation.update (orientation, 0.0);
 
+        // compute the target tilt using the target location, we scale it down a bit to prevent the
+        // drone from turning itself over
+        let xVel = 0.333 * controller.location.x.update (this.transform[12], x);
+        let zVel = 0.333 * controller.location.z.update (this.transform[14], z);
+
         // compute the tilt of the drone using the x/z components of the y axis
         let tilt = {
-            x: controller.x.update (this.transform[4], xVel),
-            z: controller.y.update (this.transform[6], zVel)
+            x: controller.tilt.x.update (this.transform[4], xVel),
+            z: controller.tilt.z.update (this.transform[6], zVel)
         };
 
         // give the drone the inputs
