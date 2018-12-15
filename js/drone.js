@@ -93,9 +93,9 @@ let Drone = function () {
                 z: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }})
             },
             location: {
-                x: PID.new ({ gains: { p: 0.25, i: 0.0, d: 12.0 }}),
+                x: PID.new ({ gains: { p: 0.25, i: 0.0, d: 18.0 }}),
                 y: PID.new ({ gains: { p: 1.0, i: 0.0, d: 15.0 }}),
-                z: PID.new ({ gains: { p: 0.25, i: 0.0, d: 12.0 }})
+                z: PID.new ({ gains: { p: 0.25, i: 0.0, d: 18.0 }})
             }
         };
     };
@@ -281,12 +281,12 @@ let Drone = function () {
         // compute the orientation of the drone using the x/z components of the x axis - our goal is
         // to always orient the drone with the x/z axes
         let orientation = Math.atan2(this.transform[2], this.transform[0]) / Math.PI;
-        let turn = -controller.orientation.update (orientation, 0.0);
+        let turn = -controller.orientation.update (orientation, 0.0, 2.0);
 
         // compute the target tilt using the target location, we scale it down a bit to prevent the
         // drone from turning itself over
-        let xVel = 0.333 * controller.location.x.update (this.transform[12], x);
-        let zVel = 0.333 * controller.location.z.update (this.transform[14], z);
+        let xVel = 0.333 * controller.location.x.update (this.transform[12], x, 0.5);
+        let zVel = 0.333 * controller.location.z.update (this.transform[14], z, 0.5);
 
         // compute the tilt of the drone using the x/z components of the y axis
         let tilt = {

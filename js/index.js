@@ -52,8 +52,8 @@ let updateRunFocus = function () {
     }
 };
 
-let countdownDuration = 10;
-let countdownTime = 10;
+let countdownDuration = 12;
+let countdownTime = 4;
 let locX = 0;
 let locY = 2.5;
 let locZ = 0;
@@ -105,8 +105,10 @@ let drawFrame = function () {
     }
     lastTime = nowTime;
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 1000);
-    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([-7, 10, 10], drone.position, [0, 1, 0]);
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (35, context.viewportWidth / context.viewportHeight, 0.1, 1000);
+    let cameraDeltaVectorLength = Float3.norm (drone.position);
+    let cameraDeltaVector = Float3.add (Float3.scale (drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [3, 1, 2]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, drone.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms

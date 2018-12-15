@@ -9,10 +9,11 @@ let PID = function () {
     };
 
     // update will return an output that is the effort to exert on the system input
-    _.update = function (pNew, pGoal) {
+    _.update = function (pNew, pGoal, scale) {
+        scale = (typeof scale !== "undefined") ? scale : 1.0;
         // compute PID, and update the history
         let last = this.last;
-        let p = pGoal - pNew;
+        let p = (pGoal - pNew) * scale;
         let i = last.i + p;
         let d = p - last.p;
         last.p = p;
