@@ -182,16 +182,13 @@ let Drone = function () {
         for (let i = 0; i < particles.length;  ++i) {
             let particle = particles[i];
             Node.get ("particle-" + i).transform = Float4x4.chain (
-                Float4x4.scale (0.05),
+                Float4x4.scale (0.025),
                 //Float4x4.translate (particle.base),
                 //transform
                 Float4x4.translate (particle.position)
             );
         }
-        Node.get ("centroid").transform = Float4x4.chain (
-            Float4x4.scale (0.1),
-            transform
-        );
+        Node.get ("drone-model").transform = transform;
     };
 
     let boundaryParticleIndexGroups = [
@@ -329,28 +326,44 @@ let Drone = function () {
     _.addToScene = function (parentNode) {
         // put down the platonic solid we will use for each corner
         for (let i = 0; i < this.particles.length;  ++i) {
-            let red = i / this.particles.length;
-            let blue = 1.0 - red;
             parentNode.addChild(Node.new({
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
-                    standardUniforms.MODEL_COLOR =  [red, 0.25, blue];
+                    standardUniforms.MODEL_COLOR =  [0.5, 0.25, 0.125];
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
                 },
-                shape: "cube",
+                shape: "sphere2",
                 children: false
             }, "particle-" + i));
         }
-        parentNode.addChild(Node.new({
-            transform: Float4x4.identity(),
-            state: function (standardUniforms) {
-                Program.get("basic").use();
-                standardUniforms.MODEL_COLOR =  [0.75, 0.75, 0.0];
-            },
-            shape: "sphere2",
-            children: false
-        }, "centroid"));
+
+        // put down a representation of the drone geometry for visual purposes
+        parentNode.addChild (Node.new ({
+                transform: Float4x4.identity (),
+                state: function (standardUniforms) {
+                    Program.get ("basic-texture").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
+                    standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
+                },
+            }, "drone-model")
+            .addChild (Node.new ({
+                transform: Float4x4.rotateX (Math.PI / -2),
+                state: function (standardUniforms) {
+                    standardUniforms.TEXTURE_SAMPLER = "drone-deck";
+                },
+                shape: "square",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.rotateX (Math.PI / -2), Float4x4.translate ([0, 0.05, 0])),
+                state: function (standardUniforms) {
+                    standardUniforms.TEXTURE_SAMPLER = "drone-props";
+                },
+                shape: "square",
+                children: false
+            }))
+        );
 
     };
 

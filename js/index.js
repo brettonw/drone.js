@@ -138,6 +138,8 @@ let drawFrame = function () {
 };
 
 let buildScene = function () {
+
+    //gl = canvas.getContext ("webgl", { alpha: false });
     scene = Node.new ({
         transform: Float4x4.scale ([1, 1, 1]),
         state: function (standardUniforms) {
@@ -179,7 +181,7 @@ let buildScene = function () {
             transform:  Float4x4.chain (Float4x4.scale (0.15), Float4x4.translate ([locX, locY, locZ])),
             state: function (standardUniforms) {
                 Program.get("basic").use();
-                standardUniforms.MODEL_COLOR =  [1.0, 0.5, 0.125];
+                standardUniforms.MODEL_COLOR =  [1.0, 0.25, 0.125];
                 standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
             },
             shape: "sphere2",
@@ -248,7 +250,7 @@ let main = function () {
     render = Render.new ({
         canvasId: "render-canvas",
         loaders: [
-            LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems ("grid-16x16", { generateMipMap: true }),
+            LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems (["grid-16x16", "drone-deck", "drone-props"], { generateMipMap: true }),
         ],
         onReady: OnReady.new (null, buildScene)
     });
