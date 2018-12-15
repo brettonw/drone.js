@@ -52,7 +52,7 @@ let updateRunFocus = function () {
     }
 };
 
-let countdownDuration = 12;
+let countdownDuration = 8;
 let countdownTime = 4;
 let locX = 0;
 let locY = 2.5;
@@ -94,8 +94,10 @@ let drawFrame = function () {
                 */
                 let radius = 10.0;
                 locX = Math.floor (Math.random() * radius * 2) - radius;
-                locY = 2.0 + Math.floor (Math.random() * 4);
+                locY = 2.0 + Math.floor (Math.random() * radius);
                 locZ = Math.floor (Math.random() * radius * 2) - radius;
+
+                //locX = 2;
             }
             drone.runController (locX, locY, locZ);
         }
@@ -109,6 +111,7 @@ let drawFrame = function () {
     let cameraDeltaVectorLength = Float3.norm (drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [3, 1, 2]);
     standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, drone.position, [0, 1, 0]);
+    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([0, 4, 10], [0, 0, 0], [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms
@@ -158,15 +161,6 @@ let buildScene = function () {
 
         }
     }, "root")
-        .addChild (Node.new ({
-            transform: Float4x4.scale (0.05),
-            state: function (standardUniforms) {
-                Program.get ("basic").use ();
-                standardUniforms.MODEL_COLOR = [1.0, 1.0, 0.25];
-            },
-            shape: "sphere2",
-            children: false
-        }))
         .addChild (Node.new ({
             transform: Float4x4.chain (Float4x4.scale (4), Float4x4.rotateX (Math.PI / -2)),
             state: function (standardUniforms) {

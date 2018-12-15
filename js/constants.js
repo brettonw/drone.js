@@ -13,3 +13,16 @@ if (! ("clamp" in Math)) {
         return (value < min) ? min : ((value > max) ? max : value);
     };
 }
+
+if (! ("conditionAngle" in Math)) {
+    Math.conditionAngle = function (angle) {
+        while (angle > Math.PI) {
+            angle -= (Math.TWO_PI);
+        }
+        while (angle < -Math.PI) {
+            angle += (Math.TWO_PI);
+        }
+        return angle;
+    };
+}
+
