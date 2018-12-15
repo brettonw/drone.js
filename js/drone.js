@@ -86,18 +86,24 @@ let Drone = function () {
 
         this.motors = [0, 0, 0, 0];
 
+        // set up the controller PIDs - we scale the x-z location PIDs to prevent the drone from
+        // flipping itself over
         this.controller = {
-            orientation: PID.new ({ gains: { p: 3.0, i: 0.0, d: 50.0 }}),
+            orientation: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }, deltaFunction: function (x, y) {
+                    return Math.conditionAngle (y - x) / Math.PI;
+                }}),
             tilt: {
-                x: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }}),
-                z: PID.new ({ gains: { p: 2.0, i: 0.0, d: 20.0 }})
+                x: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }}),
+                z: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }})
             },
             location: {
-                x: PID.new ({ gains: { p: 0.25, i: 0.0, d: 15.0 }}),
-                y: PID.new ({ gains: { p: 0.5, i: 0.0, d: 12.0 }}),
-                z: PID.new ({ gains: { p: 0.25, i: 0.0, d: 15.0 }})
+                x: PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+                y: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }}),
+                z: PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 })
             }
         };
+
+        this.goal = { x: 0, y: 2, z: 0 };
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -120,17 +126,18 @@ let Drone = function () {
         let X2 = Float3.cross (Y, Z3);
 
         let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y, Z3, position));
-
-        // reset all of the points to their base, transformed by the transform
-        for (let particle of particles) {
-            particle.position = Float4x4.preMultiply (particle.base, transform);
-        }
     };
 
     let stun = false;
+    let lastWind = 0;
     _.update = function (deltaTime) {
+        // update the wind vector with a randomly varying turbulence function
+        let windScale = ((0.7 + (Math.random() * 0.6)) + lastWind) / 2;
+        lastWind = windScale;
+        let windVelocity = Float3.scale ([13, 3, 0], windScale);
+
         let particles = this.particles;
-        let subSteps = 100;
+        let subSteps = 33;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
             // apply gravity to all the particles
@@ -139,6 +146,7 @@ let Drone = function () {
             }
             stun = GroundConstraint.apply (particles, subStepDeltaTime) || stun;
             if (stun === false) {
+                this.runController (this.goal.x, this.goal.y, this.goal.z, subStepDeltaTime);
                 for (let i = 0, end = this.motors.length; i < end; ++i) {
                     this.runMotor (i, this.motors[i]);
                 }
@@ -149,30 +157,40 @@ let Drone = function () {
                 constraint.apply(subStepDeltaTime);
             }
 
+            // apply air resistance, including wind
+            for (let particle of particles) {
+                particle.applyDrag(windVelocity);
+            }
+
             // loop over all the particles to update them
             for (let particle of particles) {
                 particle.update(subStepDeltaTime);
             }
+
+            this.updateCoordinateFrame ();
         }
 
         // do a little update to keep everything normalized (numerical methods drift, this provides
-        // a regular reset to counteract the drift).
-        this.updateCoordinateFrame ();
+        // a regular reset to counteract the drift). reset all of the points to their base,
+        // transformed by the transform
+        let transform = this.transform;
+        for (let particle of particles) {
+            particle.position = Float4x4.preMultiply (particle.base, transform);
+        }
 
         // update the scene graph nodes
         for (let i = 0; i < particles.length;  ++i) {
             let particle = particles[i];
-            let node = Node.get ("particle-" + i);
-            node.transform = Float4x4.chain (
+            Node.get ("particle-" + i).transform = Float4x4.chain (
                 Float4x4.scale (0.05),
-                Float4x4.translate (particle.base),
-                this.transform
-                //,Float4x4.translate (particle.position)
+                //Float4x4.translate (particle.base),
+                //transform
+                Float4x4.translate (particle.position)
             );
         }
         Node.get ("centroid").transform = Float4x4.chain (
             Float4x4.scale (0.1),
-            this.transform
+            transform
         );
     };
 
@@ -261,7 +279,7 @@ let Drone = function () {
         this.motors[3] = -Math.clamp (speed * turnRatio13 * xTiltRatio03 * zTiltRatio23, 0, 1);
     };
 
-    _.runController = function (x, y, z) {
+    _.runController = function (x, y, z, deltaTime) {
         /*
         console.log ("TRANSFORM");
         let axisNames = ["X-axis:    ", "Y-axis:    ", "Z-axis:    ", "Translate: "];
@@ -281,29 +299,31 @@ let Drone = function () {
         let transform = this.transform;
 
         // compute the altitude of the drone using the y component of the translation
-        let speed = (controller.location.y.update (transform[13], y) + 1.0) / 2.0;
+        let speed = (controller.location.y.update (transform[13], y, deltaTime) + 1.0) / 2.0;
 
         // compute the orientation of the drone using the x/z components of the x axis - our goal is
         // to always orient the drone with the x/z axes
         let orientationAngle = Math.atan2(transform[2], transform[0]);
-        let turn = -controller.orientation.update (orientationAngle, 0.0, function (x, y) {
-            return Math.conditionAngle (y - x) / Math.PI;
-        });
+        let turn = -controller.orientation.update (orientationAngle, 0.0, deltaTime);
 
-        // compute the target tilt using the target location, we scale it down a bit to prevent the
-        // drone from turning itself over
-        let xVel = 0.333 * controller.location.x.update (transform[12], x);
-        let zVel = 0.333 * controller.location.z.update (transform[14], z);
+        // compute the target tilt using the target location
+        let xVel = controller.location.x.update (transform[12], x, deltaTime);
+        let zVel = controller.location.z.update (transform[14], z, deltaTime);
 
         // compute the tilt of the drone using the x/z components of the y axis
-        //let xTilt = Math.atan2(-transform[4], transform[5]) / Math.PI;
         let tilt = {
-            x: controller.tilt.x.update (transform[4], xVel),
-            z: controller.tilt.z.update (transform[6], zVel)
+            x: controller.tilt.x.update (transform[4], xVel, deltaTime),
+            z: controller.tilt.z.update (transform[6], zVel, deltaTime)
         };
 
         // give the drone the inputs
         this.run (speed, turn, tilt);
+    };
+
+    _.setGoal = function (x, y, z) {
+        this.goal.x = x;
+        this.goal.y = y;
+        this.goal.z = z;
     };
 
     _.addToScene = function (parentNode) {
@@ -315,8 +335,8 @@ let Drone = function () {
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
-
                     standardUniforms.MODEL_COLOR =  [red, 0.25, blue];
+                    standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
                 },
                 shape: "cube",
                 children: false

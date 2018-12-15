@@ -52,10 +52,10 @@ let updateRunFocus = function () {
     }
 };
 
-let countdownDuration = 8;
-let countdownTime = 4;
+let countdownDuration = 15;
+let countdownTime = 8;
 let locX = 0;
-let locY = 2.5;
+let locY = 4;
 let locZ = 0;
 
 let drawFrame = function () {
@@ -92,14 +92,28 @@ let drawFrame = function () {
                 let controller = navigator.getGamepads()[0];
                 let axes = controller ? controller.axes : [0, 0, 0, 0];
                 */
+                let oldLoc = [locX, locY, locZ];
+                let newLoc = [locX, locY, locZ];
                 let radius = 10.0;
-                locX = Math.floor (Math.random() * radius * 2) - radius;
-                locY = 2.0 + Math.floor (Math.random() * radius);
-                locZ = Math.floor (Math.random() * radius * 2) - radius;
+                // force the thing to make big moves
+                while (Float3.norm (Float3.subtract (newLoc, oldLoc)) < radius) {
+                    newLoc[0] = Math.floor (Math.random () * radius * 2) - radius;
+                    newLoc[1] = 2.0 + Math.floor (Math.random () * radius);
+                    newLoc[2] = Math.floor (Math.random () * radius * 2) - radius;
+                }
 
+                locX = newLoc[0];
+                locY = newLoc[1];
+                locZ = newLoc[2];
+                Node.get ("target").transform = Float4x4.chain (
+                    Float4x4.scale (0.15),
+                    Float4x4.translate (newLoc)
+                );
+                console.log ("goto: (" + locX + ", " + locY + ", " + locZ + ")");
                 //locX = 2;
+                //locY = 2;
             }
-            drone.runController (locX, locY, locZ);
+            drone.setGoal (locX, locY, locZ);
         }
 
         // draw again as fast as possible
@@ -107,11 +121,11 @@ let drawFrame = function () {
     }
     lastTime = nowTime;
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (35, context.viewportWidth / context.viewportHeight, 0.1, 1000);
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (35, context.viewportWidth / context.viewportHeight, 0.1, 32);
     let cameraDeltaVectorLength = Float3.norm (drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [3, 1, 2]);
     standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, drone.position, [0, 1, 0]);
-    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt ([0, 4, 10], [0, 0, 0], [0, 1, 0]);
+    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 8], drone.position), drone.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms
@@ -161,17 +175,50 @@ let buildScene = function () {
 
         }
     }, "root")
+        .addChild(Node.new({
+            transform:  Float4x4.chain (Float4x4.scale (0.15), Float4x4.translate ([locX, locY, locZ])),
+            state: function (standardUniforms) {
+                Program.get("basic").use();
+                standardUniforms.MODEL_COLOR =  [1.0, 0.5, 0.125];
+                standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
+            },
+            shape: "sphere2",
+            children: false
+        }, "target"))
         .addChild (Node.new ({
             transform: Float4x4.chain (Float4x4.scale (4), Float4x4.rotateX (Math.PI / -2)),
             state: function (standardUniforms) {
                 Program.get ("basic-texture").use ();
                 standardUniforms.TEXTURE_SAMPLER = "grid-16x16";
                 standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
+                standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
             },
             shape: "square",
             children: false
         }))
     ;
+
+    // add some "space" nodes to give a sense of motion, spaced at 4x4, from -12 .. 12
+    let spaceLow = -12;
+    let spaceHigh = 12;
+    let spaceSpacing = 2;
+    for (let i = spaceLow; i <= spaceHigh; i+= spaceSpacing) {
+        for (let j = 0; j <= spaceHigh; j+= spaceSpacing) {
+            for (let k = spaceLow; k <= spaceHigh; k+= spaceSpacing) {
+                scene.addChild (Node.new({
+                    transform:  Float4x4.chain (Float4x4.scale (0.0125), Float4x4.translate ([i, j, k])),
+                    state: function (standardUniforms) {
+                        Program.get("basic").use();
+                        standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
+                        standardUniforms.MODEL_COLOR =  [0.5, 0.5, 0.5];
+                    },
+                    shape: "sphere2",
+                    children: false
+                }));
+            }
+        }
+    }
+
 
     drone = Drone.new ({transform: Float4x4.translate ([0, 1, 0])});
     drone.addToScene (scene);

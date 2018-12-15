@@ -34,8 +34,25 @@ let Particle = function () {
         return this;
     };
 
-    _.applyGravity = function (deltaTime) {
+    _.applyGravity = function () {
         this.applyAcceleration(Float3.copy ([0.0, -Math.GRAVITY, 0.0]));
+        return this;
+    };
+
+    _.applyDrag = function (windVelocity) {
+        // coefficient of drag for a sphere is 0.5, for our purposes - particles have a radius of
+        // 0.1, so the "frontal area" is Pi*r*r or about .01 * 3.14 = .031415 - we call that 0.1
+        const a = 0.1;
+        const rho = 1.2;
+        const cd = 0.5;
+
+        let totalVelocity = Float3.add (Float3.scale (windVelocity, -1.0), this.velocity);
+        let v = Float3.norm (totalVelocity);
+        if (v > 0) {
+            let fd = 0.5 * cd * rho * v * v * a;
+            let dragForceVector = Float3.scale (totalVelocity, -fd / v);
+            this.applyForce (dragForceVector);
+        }
         return this;
     };
 
