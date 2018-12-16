@@ -4,31 +4,57 @@ let DroneThing = function () {
     let _ = Object.create (Thing);
 
     _.construct = function (parameters) {
-        this.last = { p: 0.0, i: 0.0 };
-        this.deltaFunction = Utility.defaultValue (parameters.deltaFunction, function (x, y) {
-            return y - x;
-        });
-        this.outputScale = Utility.defaultValue (parameters.outputScale, 1.0);
-        this.gain = Utility.defaultValue (parameters.gains, { p: 2.0, i: 0.0, d: 20.0 });
+        this.countdownDuration = 8 + (Math.random () * 8);
+        this.countdownTime = 5 + (Math.random () * 5);
+        this.goal = Utility.defaultValue (parameters.goal, [0, 2, 0]);
+        this.drone = Drone.new ({ transform: Float4x4.translate (this.goal) });
     };
 
-    // update will return an output that is the effort to exert on the system input
-    _.update = function (pNew, pGoal, deltaTime, deltaFunction) {
-        // compute PID, and update the history
-        let last = this.last;
-        let p = this.deltaFunction (pNew, pGoal);
-        let i = last.i + p;
-        let d = p - last.p;
-        last.p = p;
-        last.i = i;
-        //console.log ("p = " + p.toFixed(4) + ", i = " + i.toFixed(4) + ", d = " + d.toFixed(4));
+    _.update = function (deltaTime) {
+        this.countdownTime -= deltaTime;
+        if (this.countdownTime < 0) {
+            this.countdownTime = this.countdownDuration;
+            /*
+            let controller = navigator.getGamepads()[0];
+            let axes = controller ? controller.axes : [0, 0, 0, 0];
+            */
+            let newGoal = Float3.copy (this.goal);
+            let radius = 11.0;
 
-        // the PID gain values may be sensitive to update rate - so we include the deltaTime value
-        // the D value is definitely sensitive to update rate
+            // force the thing to make big moves
+            while (Float3.norm (Float3.subtract (newGoal, this.goal)) < radius) {
+                newGoal[0] = Math.floor (Math.random () * radius * 2) - radius;
+                newGoal[1] = 1.5 + Math.floor (Math.random () * radius);
+                newGoal[2] = Math.floor (Math.random () * radius * 2) - radius;
+            }
+            this.goto (newGoal);
+        }
+    };
 
-        // compute the PID weighted response
-        let response = (p * this.gain.p) + (i * this.gain.i) + ((d / deltaTime) * this.gain.d);
-        return this.outputScale * Math.clamp(response, -1.0, 1.0);
+    _.goto = function (newGoal) {
+        Node.get (this.name + " (target)").transform = Float4x4.chain (Float4x4.scale (0.1), Float4x4.translate (newGoal));
+        let delta = Float3.norm (Float3.subtract (newGoal, this.goal));
+        //console.log (this.name + ", go from: " + Float3.str (this.goal) + ", to: " + Float3.str (newGoal) + ", distance: " + delta.toFixed (3));
+        this.goal = newGoal;
+        this.drone.setGoal (newGoal);
+        return this;
+    };
+
+    _.addToScene = function (parentNode) {
+        // add the target node before the drone so the props don't clip it
+        parentNode.addChild (Node.new ({
+            transform: Float4x4.identity (),
+            state: function (standardUniforms) {
+                Program.get ("basic").use ();
+                standardUniforms.MODEL_COLOR = [0.1, 0.5, 1.0];
+            },
+            shape: "sphere2",
+            children: false
+        }, this.name + " (target)"));
+
+        this.drone.addToScene (parentNode);
+
+        return this.goto (this.goal);
     };
 
     return _;

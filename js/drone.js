@@ -23,15 +23,15 @@ let Drone = function () {
         // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
         // vertices have a mass of about 125g.
         let particles = this.particles = [
-            Particle.new ({ position: [ 1.0,  0.5, -1.0], mass: 125 }), // 0
+            Particle.new ({ position: [ 1.0,  0.5, -1.0], mass: 100 }), // 0
             Particle.new ({ position: [ 0.0,  0.5, -0.6], mass: 125 }), // 1
-            Particle.new ({ position: [-1.0,  0.5, -1.0], mass: 125 }), // 2
+            Particle.new ({ position: [-1.0,  0.5, -1.0], mass: 100 }), // 2
             Particle.new ({ position: [-0.6,  0.5,  0.0], mass: 125 }), // 3
-            Particle.new ({ position: [-1.0,  0.5,  1.0], mass: 125 }), // 4
+            Particle.new ({ position: [-1.0,  0.5,  1.0], mass: 100 }), // 4
             Particle.new ({ position: [ 0.0,  0.5,  0.6], mass: 125 }), // 5
-            Particle.new ({ position: [ 1.0,  0.5,  1.0], mass: 125 }), // 6
+            Particle.new ({ position: [ 1.0,  0.5,  1.0], mass: 100 }), // 6
             Particle.new ({ position: [ 0.6,  0.5,  0.0], mass: 125 }), // 7
-            Particle.new ({ position: [ 0.0, -0.2,  0.0], mass: 125 })  // 8
+            Particle.new ({ position: [ 0.0, -0.2,  0.0], mass: 150 })  // 8
         ];
 
         // compute the mass, and the motor forces, such that all 4 motors at half speed are on a
@@ -130,39 +130,22 @@ let Drone = function () {
         let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y, Z3, position));
     };
 
-    // XXX this needs to move
-    let lastWind = 0;
-
     _.subUpdateParticles = function (subStepDeltaTime) {
         let particles = this.particles;
-
-        // apply gravity to all the particles
-        for (let particle of particles) {
-            particle.applyGravity (subStepDeltaTime);
-        }
-
-        // XXX this needs to come out of the Drone class and be global
-        // update the wind vector with a randomly varying turbulence function
-        let windScale = ((0.7 + (Math.random() * 0.6)) + lastWind) / 2;
-        lastWind = windScale;
-        let windVelocity = Float3.scale ([13, 3, 0], windScale);
-
-        // apply air resistance, including wind
-        for (let particle of particles) {
-            particle.applyDrag(windVelocity);
-        }
 
         // apply the ground constraint
         this.stun = GroundConstraint.apply (particles, subStepDeltaTime) || this.stun;
 
         // loop over all the distance constraints to apply them
         for (let constraint of this.constraints) {
-            constraint.apply(subStepDeltaTime);
+            constraint.apply (subStepDeltaTime);
         }
 
-        // loop over all the particles to update them
+        // apply gravity and air resistance to all the particles
         for (let particle of particles) {
-            particle.update(subStepDeltaTime);
+            particle.applyGravity (subStepDeltaTime);
+            particle.applyDrag ();
+            particle.update (subStepDeltaTime);
         }
 
         this.updateCoordinateFrame (subStepDeltaTime);
@@ -179,7 +162,7 @@ let Drone = function () {
 
     _.update = function (deltaTime) {
         let particles = this.particles;
-        let subSteps = 33;
+        let subSteps = Math.floor (1000 / targetFrameRate);
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
             this.subUpdateParticles(subStepDeltaTime);
@@ -199,7 +182,7 @@ let Drone = function () {
         for (let i = 0; i < particles.length;  ++i) {
             let particle = particles[i];
             Node.get (this.name + " (particle-" + i + ")").transform = Float4x4.chain (
-                Float4x4.scale (0.025),
+                Float4x4.scale (0.0002 * particle.mass),
                 //Float4x4.translate (particle.base),
                 //transform
                 Float4x4.translate (particle.position)
@@ -334,10 +317,10 @@ let Drone = function () {
         this.run (speed, turn, tilt);
     };
 
-    _.setGoal = function (x, y, z) {
-        this.goal.x = x;
-        this.goal.y = y;
-        this.goal.z = z;
+    _.setGoal = function (xyz) {
+        this.goal.x = xyz[0];
+        this.goal.y = xyz[1];
+        this.goal.z = xyz[2];
     };
 
     _.addToScene = function (parentNode) {
@@ -347,12 +330,12 @@ let Drone = function () {
             parentNode.addChild(Node.new({
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
-                    Program.get("basic").use();
+
                     switch (i) {
-                        case 0: case 6: standardUniforms.MODEL_COLOR = [0.0, 1.0, 0.0]; break;
-                        case 2: case 4: standardUniforms.MODEL_COLOR = [1.0, 0.0, 0.0]; break;
-                        case 5: standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0]; break;
-                        default: standardUniforms.MODEL_COLOR = [0.5, 0.25, 0.125]; break;
+                        case 0: case 6: standardUniforms.MODEL_COLOR = [0.0, 1.0, 0.0]; Program.get("color").use(); break;
+                        case 2: case 4: standardUniforms.MODEL_COLOR = [1.0, 0.0, 0.0]; Program.get("color").use();break;
+                        case 5: standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0]; Program.get("color").use();break;
+                        default: standardUniforms.MODEL_COLOR = [0.5, 0.25, 0.125]; Program.get("basic").use();break;
                     }
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
                 },

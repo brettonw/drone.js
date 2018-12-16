@@ -14,6 +14,7 @@ if (! ("clamp" in Math)) {
     };
 }
 
+// XXX something like this is already in the WebGl utility class I wrote, use that instead?
 if (! ("conditionAngle" in Math)) {
     Math.conditionAngle = function (angle) {
         while (angle > Math.PI) {

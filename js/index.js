@@ -1,17 +1,15 @@
 "use strict;"
 
+
 let scene;
 let standardUniforms = Object.create (null);
 
-let lastTime = new Date ().getTime ();
-
+// the default deltaTime
 const targetFrameRate = 30;
-const targetFrameDeltaTimeMs = 1000.0 * (1.0 / targetFrameRate) * 0.9;
+deltaTime = 1.0 / targetFrameRate;
+const targetFrameDeltaTimeMs = 1000.0 * deltaTime * 0.9;
 
-const fpsHistoryCount = 32;
-let fpsHistory = Array (fpsHistoryCount).fill (0);
-let fpsHistoryIndex = 0;
-let fpsHistoryAverage = 0;
+let fpsHistory = RollingAverage.new ({ count: targetFrameRate });
 
 let droneOne;
 let droneTwo;
@@ -50,76 +48,36 @@ let updateRunFocus = function () {
     }
 };
 
-let countdownDuration = 15;
-let countdownTime = 8;
-let locX = 0;
-let locY = 4;
-let locZ = 0;
-
+let lastTime = new Date ().getTime ();
 let drawFrame = function () {
-    let nowTime = new Date ().getTime ();
 
     if ((animateCheckbox.checked) && (runFocus === true)) {
-
         // draw again as fast as possible
         window.requestAnimationFrame (drawFrame);
 
         // compute the updated time (in ms)
-        let deltaTime = nowTime - lastTime;
-        if (deltaTime < targetFrameDeltaTimeMs) {
+        let nowTime = new Date ().getTime ();
+        let frameDeltaTime = nowTime - lastTime;
+        if (frameDeltaTime < targetFrameDeltaTimeMs) {
             // if not enough time has past, skip this frame...
             return;
         }
+        lastTime = nowTime;
 
         // update the fps
-        fpsHistoryAverage -= fpsHistory[fpsHistoryIndex];
-        fpsHistoryAverage += (fpsHistory[fpsHistoryIndex] = deltaTime);
-        fpsHistoryIndex = (fpsHistoryIndex + 1) % fpsHistoryCount;
-
-        let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
-        let fps = 1000.0 / averageDeltaTime;
+        let averageDeltaTimeMs = fpsHistory.update (frameDeltaTime);
+        let fps = 1000.0 / averageDeltaTimeMs;
         displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
 
-        deltaTime = 1.0 / targetFrameRate;
+        // NOTE - might need to control the order of thing updates, especially the world state first
         Thing.updateAll (deltaTime);
-
-        countdownTime -= deltaTime;
-        if (countdownTime < 0) {
-            countdownTime = countdownDuration;
-            /*
-            let controller = navigator.getGamepads()[0];
-            let axes = controller ? controller.axes : [0, 0, 0, 0];
-            */
-            let oldLoc = [locX, locY, locZ];
-            let newLoc = [locX, locY, locZ];
-            let radius = 10.0;
-            // force the thing to make big moves
-            while (Float3.norm (Float3.subtract (newLoc, oldLoc)) < radius) {
-                newLoc[0] = Math.floor (Math.random () * radius * 2) - radius;
-                newLoc[1] = 1.5 + Math.floor (Math.random () * radius);
-                newLoc[2] = Math.floor (Math.random () * radius * 2) - radius;
-            }
-
-            locX = newLoc[0];
-            locY = newLoc[1];
-            locZ = newLoc[2];
-            Node.get ("target").transform = Float4x4.chain (
-                Float4x4.scale (0.15),
-                Float4x4.translate (newLoc)
-            );
-            console.log ("goto: (" + locX + ", " + locY + ", " + locZ + ")");
-            //locX = 2;
-            //locY = 2;
-        }
-        droneOne.setGoal (locX, locY, locZ);
     }
-    lastTime = nowTime;
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 32);
-    let cameraDeltaVectorLength = Float3.norm (droneOne.position);
-    let cameraDeltaVector = Float3.add (Float3.scale (droneOne.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.5, 2, 4]);
-    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.position, [0, 1, 0]);
-    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 8], droneOne.position), droneOne.position, [0, 1, 0]);
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (40, context.viewportWidth / context.viewportHeight, 0.1, 64);
+    let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
+    let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.5, 3, 4]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
+    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 8], droneOne.drone.position), droneOne.drone.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms
@@ -132,6 +90,8 @@ let drawFrame = function () {
 };
 
 let buildScene = function () {
+    worldState = WorldState.new ();
+
     // create a surface of revolution for the prop rings
     let rp = [[0.4375, 0.0500], [0.4250, 0.0500], [0.4375, 0.0000], [0.4250, -0.0500], [0.4375, -0.0500], [0.4500, -0.0167], [0.4500, 0.0167]];
     let rpIndex = [0, 6, 5, 4, 4, 3,  3,  2,  1, 1, 0];
@@ -182,16 +142,6 @@ let buildScene = function () {
 
         }
     }, "root")
-        .addChild(Node.new({
-            transform:  Float4x4.chain (Float4x4.scale (0.15), Float4x4.translate ([locX, locY, locZ])),
-            state: function (standardUniforms) {
-                Program.get("basic").use();
-                standardUniforms.MODEL_COLOR =  [1.0, 0.25, 0.125];
-                standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
-            },
-            shape: "sphere2",
-            children: false
-        }, "target"))
         .addChild (Node.new ({
             transform: Float4x4.chain (Float4x4.scale (4), Float4x4.rotateX (Math.PI / -2)),
             state: function (standardUniforms) {
@@ -205,32 +155,39 @@ let buildScene = function () {
         }))
     ;
 
-    // add some "space" nodes to give a sense of motion, spaced at 4x4, from -12 .. 12
-    let spaceLow = -12;
+    // add some "space" nodes to give a sense of motion, spaced at 1x1, from -12 .. 12
     let spaceHigh = 12;
-    let spaceSpacing = 2;
+    let spaceLow = -spaceHigh;
+    let spaceSpacing = 1;
     for (let i = spaceLow; i <= spaceHigh; i+= spaceSpacing) {
-        for (let j = 0; j <= spaceHigh; j+= spaceSpacing) {
-            for (let k = spaceLow; k <= spaceHigh; k+= spaceSpacing) {
-                scene.addChild (Node.new({
-                    transform:  Float4x4.chain (Float4x4.scale (0.0125), Float4x4.translate ([i, j, k])),
-                    state: function (standardUniforms) {
-                        Program.get("basic").use();
-                        standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
-                        standardUniforms.MODEL_COLOR =  [0.5, 0.5, 0.5];
-                    },
-                    shape: "sphere2",
-                    children: false
-                }));
-            }
+        for (let k = spaceLow; k <= spaceHigh; k+= spaceSpacing) {
+            scene.addChild (Node.new({
+                transform:  Float4x4.chain (Float4x4.scale (0.0125), Float4x4.translate ([i, 0, k])),
+                state: function (standardUniforms) {
+                    Program.get("basic").use();
+                    //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
+                    let color = 1.0 - (Math.sqrt ((i * i) + (k * k)) / Math.sqrt (2 * (spaceHigh * spaceHigh)));
+                    standardUniforms.MODEL_COLOR =  [color, color, color];
+                },
+                shape: "cube",
+                children: false
+            }));
         }
     }
 
 
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
-    droneOne = Drone.new ({transform: Float4x4.translate ([0, 1, 0])}, "one").addToScene (scene);
-    droneTwo = Drone.new ({transform: Float4x4.translate ([3, 1, -3])}, "two").addToScene (scene);
+    droneOne = DroneThing.new ({ goal: [0, 1, 0] }, "one").addToScene (scene);
+    droneTwo = DroneThing.new ({ goal: [3, 1, -3] }, "two").addToScene (scene);
+    DroneThing.new ({ goal: [-3, 1, 3] }).addToScene (scene);
+    DroneThing.new ({ goal: [3, 1, 3] }).addToScene (scene);
+    DroneThing.new ({ goal: [-3, 1, -3] }).addToScene (scene);
+
+    DroneThing.new ({ goal: [-3, 1, -7] }).addToScene (scene);
+    DroneThing.new ({ goal: [3, 1, -7] }).addToScene (scene);
+    DroneThing.new ({ goal: [-3, 1, -7] }).addToScene (scene);
+    //droneTwo = Drone.new ({transform: Float4x4.translate ([3, 1, -3])}, "two").addToScene (scene);
     drawFrame ();
 };
 

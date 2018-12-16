@@ -14,7 +14,7 @@ let Particle = function () {
     _.construct = function (parameters) {
         this.position = Float3.copy (parameters.position);
         this.velocity = Float3.create ().fill (0);
-        this.mass = parameters.mass;
+        this.mass = Utility.defaultValue (parameters.mass, 100.0);
         this.force = Float3.create ().fill (0);
         console.log ("Particle: " + Float3.str (this.position));
     };
@@ -39,7 +39,9 @@ let Particle = function () {
         return this;
     };
 
-    _.applyDrag = function (windVelocity) {
+    _.applyDrag = function () {
+        let windVelocity = worldState.query (WorldState.WIND);
+
         // coefficient of drag for a sphere is 0.5, for our purposes - particles have a radius of
         // 0.1, so the "frontal area" is Pi*r*r or about .01 * 3.14 = .031415 - we call that 0.1
         const a = 0.1;
