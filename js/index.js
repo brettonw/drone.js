@@ -134,10 +134,6 @@ let drawFrame = function () {
 let buildScene = function () {
     // create a surface of revolution for the prop rings
     let rp = [[0.4375, 0.0500], [0.4250, 0.0500], [0.4375, 0.0000], [0.4250, -0.0500], [0.4375, -0.0500], [0.4500, -0.0167], [0.4500, 0.0167]];
-    /*
-    let rpIndex = [0, 1, 1, 2, 3, 3, 4, 4, 5, 6, 0];
-    let rpSign =  [0, 0, -1, -1, -1, 0, 0, 1, 1, 1, 1];
-    */
     let rpIndex = [0, 6, 5, 4, 4, 3,  3,  2,  1, 1, 0];
     let rpSign =  [1, 1, 1, 1, 0, 0, -1, -1, -1, 0, 0];
     let rpi = function (i) { return rp[rpIndex[i]]; };
