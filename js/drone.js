@@ -111,9 +111,10 @@ let Drone = function () {
         let particles = this.particles;
 
         // compute the centroid
-        let position = this.position = computePosition (particles);
+        let position = computePosition (particles);
         this.velocity = Float3.scale (Float3.subtract (position, this.position), 1.0 / deltaTime);
-        console.log ("Velocity: " + Float3.str (this.velocity));
+        //console.log ("Velocity: " + Float3.str (this.velocity));
+        this.position = position;
 
         // the Y frame will be the average of pts 0, 2, 4, and 6 minus point 8
         let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
@@ -164,7 +165,7 @@ let Drone = function () {
             particle.update(subStepDeltaTime);
         }
 
-        this.updateCoordinateFrame ();
+        this.updateCoordinateFrame (subStepDeltaTime);
     };
 
     _.subUpdate = function (subStepDeltaTime) {
