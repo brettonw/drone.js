@@ -98,7 +98,7 @@ let drawFrame = function () {
                 // force the thing to make big moves
                 while (Float3.norm (Float3.subtract (newLoc, oldLoc)) < radius) {
                     newLoc[0] = Math.floor (Math.random () * radius * 2) - radius;
-                    newLoc[1] = 2.0 + Math.floor (Math.random () * radius);
+                    newLoc[1] = 1.5 + Math.floor (Math.random () * radius);
                     newLoc[2] = Math.floor (Math.random () * radius * 2) - radius;
                 }
 
