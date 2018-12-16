@@ -128,7 +128,7 @@ let drawFrame = function () {
     //console.log ("CAMERA AT: " + Float3.str (standardUniforms.CAMERA_POSITION));
 
     // draw the scene
-    //scene.traverse (standardUniforms);
+    scene.traverse (standardUniforms);
 };
 
 let buildScene = function () {
