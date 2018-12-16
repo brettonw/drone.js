@@ -1,22 +1,20 @@
 "use strict;"
 
-let render;
 let scene;
 let standardUniforms = Object.create (null);
 
-let globalTime = 0;
 let lastTime = new Date ().getTime ();
 
 const targetFrameRate = 30;
-const targetFrameDeltaTimeMs = 1000.0 * (1.0 / targetFrameRate)* 0.9;
+const targetFrameDeltaTimeMs = 1000.0 * (1.0 / targetFrameRate) * 0.9;
 
 const fpsHistoryCount = 32;
-let frameCounter = 0;
 let fpsHistory = Array (fpsHistoryCount).fill (0);
 let fpsHistoryIndex = 0;
 let fpsHistoryAverage = 0;
 
-let drone;
+let droneOne;
+let droneTwo;
 
 let animateCheckbox;
 let displayFpsSpan;
@@ -83,10 +81,7 @@ let drawFrame = function () {
         displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
 
         deltaTime = 1.0 / targetFrameRate;
-        drone.update (deltaTime);
-
-        globalTime += deltaTime;
-        Thing.updateAll (globalTime);
+        Thing.updateAll (deltaTime);
 
         countdownTime -= deltaTime;
         if (countdownTime < 0) {
@@ -116,15 +111,15 @@ let drawFrame = function () {
             //locX = 2;
             //locY = 2;
         }
-        drone.setGoal (locX, locY, locZ);
+        droneOne.setGoal (locX, locY, locZ);
     }
     lastTime = nowTime;
 
     standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 32);
-    let cameraDeltaVectorLength = Float3.norm (drone.position);
-    let cameraDeltaVector = Float3.add (Float3.scale (drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.5, 2, 4]);
-    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, drone.position, [0, 1, 0]);
-    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 8], drone.position), drone.position, [0, 1, 0]);
+    let cameraDeltaVectorLength = Float3.norm (droneOne.position);
+    let cameraDeltaVector = Float3.add (Float3.scale (droneOne.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.5, 2, 4]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.position, [0, 1, 0]);
+    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 8], droneOne.position), droneOne.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms
@@ -133,7 +128,7 @@ let drawFrame = function () {
     //console.log ("CAMERA AT: " + Float3.str (standardUniforms.CAMERA_POSITION));
 
     // draw the scene
-    scene.traverse (standardUniforms);
+    //scene.traverse (standardUniforms);
 };
 
 let buildScene = function () {
@@ -236,8 +231,10 @@ let buildScene = function () {
     }
 
 
-    drone = Drone.new ({transform: Float4x4.translate ([0, 1, 0])});
-    drone.addToScene (scene);
+    // create the drone, the transform applies to the first configuration to give the initial
+    // flight configuration of the drone
+    droneOne = Drone.new ({transform: Float4x4.translate ([0, 1, 0])}, "one").addToScene (scene);
+    droneTwo = Drone.new ({transform: Float4x4.translate ([3, 1, -3])}, "two").addToScene (scene);
     drawFrame ();
 };
 
@@ -251,17 +248,9 @@ let clickAnimateCheckbox = function () {
 let main = function () {
     animateCheckbox = document.getElementById("animateCheckbox");
     displayFpsSpan = document.getElementById("displayFpsSpan");
-    /*
-    MouseTracker.new ("render-canvas", OnReady.new (null, function (deltaPosition) {
-        if (!animateCheckbox.checked) {
-            window.requestAnimationFrame (drawFrame);
-        }
-        drone.run (0.5 - (10.0 * deltaPosition[1]), 100.0 * deltaPosition[0]);
-    }), 0.01);
-    */
 
     // create the render object
-    render = Render.new ({
+    Render.new ({
         canvasId: "render-canvas",
         loaders: [
             LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems (["grid-16x16", "drone-deck", "drone-props"], { generateMipMap: true }),

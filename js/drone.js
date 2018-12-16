@@ -1,7 +1,7 @@
 "use strict;"
 
 let Drone = function () {
-    let _ = Object.create (ClassBase);
+    let _ = Object.create (Thing);
 
     let computePosition = function (particles) {
         let position = Float3.create().fill (0);
@@ -103,6 +103,7 @@ let Drone = function () {
             }
         };
 
+        this.stun = false;
         this.goal = { x: 0, y: 2, z: 0 };
     };
 
@@ -110,9 +111,9 @@ let Drone = function () {
         let particles = this.particles;
 
         // compute the centroid
-        let position = drone.position = computePosition (particles);
+        let position = this.position = computePosition (particles);
         this.velocity = Float3.scale (Float3.subtract (position, this.position), 1.0 / deltaTime);
-        //console.log ("Velocity: " + Float3.str (this.velocity));
+        console.log ("Velocity: " + Float3.str (this.velocity));
 
         // the Y frame will be the average of pts 0, 2, 4, and 6 minus point 8
         let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
@@ -128,46 +129,61 @@ let Drone = function () {
         let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y, Z3, position));
     };
 
-    let stun = false;
+    // XXX this needs to move
     let lastWind = 0;
-    _.update = function (deltaTime) {
+
+    _.subUpdateParticles = function (subStepDeltaTime) {
+        let particles = this.particles;
+
+        // apply gravity to all the particles
+        for (let particle of particles) {
+            particle.applyGravity (subStepDeltaTime);
+        }
+
+        // XXX this needs to come out of the Drone class and be global
         // update the wind vector with a randomly varying turbulence function
         let windScale = ((0.7 + (Math.random() * 0.6)) + lastWind) / 2;
         lastWind = windScale;
         let windVelocity = Float3.scale ([13, 3, 0], windScale);
 
+        // apply air resistance, including wind
+        for (let particle of particles) {
+            particle.applyDrag(windVelocity);
+        }
+
+        // apply the ground constraint
+        this.stun = GroundConstraint.apply (particles, subStepDeltaTime) || this.stun;
+
+        // loop over all the distance constraints to apply them
+        for (let constraint of this.constraints) {
+            constraint.apply(subStepDeltaTime);
+        }
+
+        // loop over all the particles to update them
+        for (let particle of particles) {
+            particle.update(subStepDeltaTime);
+        }
+
+        this.updateCoordinateFrame ();
+    };
+
+    _.subUpdate = function (subStepDeltaTime) {
+        if (this.stun === false) {
+            this.runController (this.goal.x, this.goal.y, this.goal.z, subStepDeltaTime);
+            for (let i = 0, end = this.motors.length; i < end; ++i) {
+                this.runMotor (i, this.motors[i]);
+            }
+        }
+    };
+
+    _.update = function (deltaTime) {
         let particles = this.particles;
         let subSteps = 33;
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
-            // apply gravity to all the particles
-            for (let particle of particles) {
-                particle.applyGravity (subStepDeltaTime);
-            }
-            stun = GroundConstraint.apply (particles, subStepDeltaTime) || stun;
-            if (stun === false) {
-                this.runController (this.goal.x, this.goal.y, this.goal.z, subStepDeltaTime);
-                for (let i = 0, end = this.motors.length; i < end; ++i) {
-                    this.runMotor (i, this.motors[i]);
-                }
-            }
+            this.subUpdateParticles(subStepDeltaTime);
+            this.subUpdate(subStepDeltaTime);
 
-            // loop over all the constraints to apply them
-            for (let constraint of this.constraints) {
-                constraint.apply(subStepDeltaTime);
-            }
-
-            // apply air resistance, including wind
-            for (let particle of particles) {
-                particle.applyDrag(windVelocity);
-            }
-
-            // loop over all the particles to update them
-            for (let particle of particles) {
-                particle.update(subStepDeltaTime);
-            }
-
-            this.updateCoordinateFrame ();
         }
 
         // do a little update to keep everything normalized (numerical methods drift, this provides
@@ -181,14 +197,14 @@ let Drone = function () {
         // update the scene graph nodes
         for (let i = 0; i < particles.length;  ++i) {
             let particle = particles[i];
-            Node.get ("particle-" + i).transform = Float4x4.chain (
+            Node.get (this.name + " (particle-" + i + ")").transform = Float4x4.chain (
                 Float4x4.scale (0.025),
                 //Float4x4.translate (particle.base),
                 //transform
                 Float4x4.translate (particle.position)
             );
         }
-        Node.get ("drone-model").transform = transform;
+        Node.get (this.name + " (drone-model)").transform = transform;
     };
 
     let boundaryParticleIndexGroups = [
@@ -324,7 +340,8 @@ let Drone = function () {
     };
 
     _.addToScene = function (parentNode) {
-        // put down the platonic solid we will use for each corner
+        console.log ("Drone named: " + this.name);
+        // put down the dots we will use for each of the drone particles
         for (let i = 0; i < this.particles.length;  ++i) {
             parentNode.addChild(Node.new({
                 transform: Float4x4.identity(),
@@ -340,7 +357,7 @@ let Drone = function () {
                 },
                 shape: "sphere2",
                 children: false
-            }, "particle-" + i));
+            }, this.name + " (particle-" + i + ")"));
         }
 
         // put down a representation of the drone geometry for visual purposes
@@ -349,7 +366,7 @@ let Drone = function () {
                 state: function (standardUniforms) {
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
                 },
-            }, "drone-model")
+            }, this.name + " (drone-model)")
             .addChild (Node.new ({
                 transform: Float4x4.chain (Float4x4.translate ([0.62, 0.05, 0.62])),
                 state: function (standardUniforms) {
@@ -443,7 +460,7 @@ let Drone = function () {
                 children: false
             }))
         );
-
+        return this;
     };
 
     return _;
