@@ -62,11 +62,14 @@ let drawFrame = function () {
     let nowTime = new Date ().getTime ();
 
     if ((animateCheckbox.checked) && (runFocus === true)) {
+
+        // draw again as fast as possible
+        window.requestAnimationFrame (drawFrame);
+
         // compute the updated time (in ms)
         let deltaTime = nowTime - lastTime;
         if (deltaTime < targetFrameDeltaTimeMs) {
             // if not enough time has past, skip this frame...
-            window.requestAnimationFrame (drawFrame);
             return;
         }
 
@@ -74,50 +77,46 @@ let drawFrame = function () {
         fpsHistoryAverage -= fpsHistory[fpsHistoryIndex];
         fpsHistoryAverage += (fpsHistory[fpsHistoryIndex] = deltaTime);
         fpsHistoryIndex = (fpsHistoryIndex + 1) % fpsHistoryCount;
-        if (++frameCounter > fpsHistoryCount) {
-            let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
-            let fps = 1000.0 / averageDeltaTime;
-            displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
 
-            deltaTime = 1.0 / targetFrameRate;
-            drone.update (deltaTime);
+        let averageDeltaTime = fpsHistoryAverage / fpsHistoryCount;
+        let fps = 1000.0 / averageDeltaTime;
+        displayFpsSpan.innerHTML = Utility.padNum(fps.toFixed(1), 3) + " fps";
 
-            globalTime += deltaTime;
-            Thing.updateAll (globalTime);
+        deltaTime = 1.0 / targetFrameRate;
+        drone.update (deltaTime);
 
-            countdownTime -= deltaTime;
-            if (countdownTime < 0) {
-                countdownTime = countdownDuration;
-                /*
-                let controller = navigator.getGamepads()[0];
-                let axes = controller ? controller.axes : [0, 0, 0, 0];
-                */
-                let oldLoc = [locX, locY, locZ];
-                let newLoc = [locX, locY, locZ];
-                let radius = 10.0;
-                // force the thing to make big moves
-                while (Float3.norm (Float3.subtract (newLoc, oldLoc)) < radius) {
-                    newLoc[0] = Math.floor (Math.random () * radius * 2) - radius;
-                    newLoc[1] = 1.5 + Math.floor (Math.random () * radius);
-                    newLoc[2] = Math.floor (Math.random () * radius * 2) - radius;
-                }
+        globalTime += deltaTime;
+        Thing.updateAll (globalTime);
 
-                locX = newLoc[0];
-                locY = newLoc[1];
-                locZ = newLoc[2];
-                Node.get ("target").transform = Float4x4.chain (
-                    Float4x4.scale (0.15),
-                    Float4x4.translate (newLoc)
-                );
-                console.log ("goto: (" + locX + ", " + locY + ", " + locZ + ")");
-                //locX = 2;
-                //locY = 2;
+        countdownTime -= deltaTime;
+        if (countdownTime < 0) {
+            countdownTime = countdownDuration;
+            /*
+            let controller = navigator.getGamepads()[0];
+            let axes = controller ? controller.axes : [0, 0, 0, 0];
+            */
+            let oldLoc = [locX, locY, locZ];
+            let newLoc = [locX, locY, locZ];
+            let radius = 10.0;
+            // force the thing to make big moves
+            while (Float3.norm (Float3.subtract (newLoc, oldLoc)) < radius) {
+                newLoc[0] = Math.floor (Math.random () * radius * 2) - radius;
+                newLoc[1] = 1.5 + Math.floor (Math.random () * radius);
+                newLoc[2] = Math.floor (Math.random () * radius * 2) - radius;
             }
-            drone.setGoal (locX, locY, locZ);
-        }
 
-        // draw again as fast as possible
-        window.requestAnimationFrame (drawFrame);
+            locX = newLoc[0];
+            locY = newLoc[1];
+            locZ = newLoc[2];
+            Node.get ("target").transform = Float4x4.chain (
+                Float4x4.scale (0.15),
+                Float4x4.translate (newLoc)
+            );
+            console.log ("goto: (" + locX + ", " + locY + ", " + locZ + ")");
+            //locX = 2;
+            //locY = 2;
+        }
+        drone.setGoal (locX, locY, locZ);
     }
     lastTime = nowTime;
 
@@ -138,6 +137,21 @@ let drawFrame = function () {
 };
 
 let buildScene = function () {
+    // create a surface of revolution for the prop rings
+    let rp = [[0.4375, 0.0500], [0.4250, 0.0500], [0.4375, 0.0000], [0.4250, -0.0500], [0.4375, -0.0500], [0.4500, -0.0167], [0.4500, 0.0167]];
+    /*
+    let rpIndex = [0, 1, 1, 2, 3, 3, 4, 4, 5, 6, 0];
+    let rpSign =  [0, 0, -1, -1, -1, 0, 0, 1, 1, 1, 1];
+    */
+    let rpIndex = [0, 6, 5, 4, 4, 3,  3,  2,  1, 1, 0];
+    let rpSign =  [1, 1, 1, 1, 0, 0, -1, -1, -1, 0, 0];
+    let rpi = function (i) { return rp[rpIndex[i]]; };
+    let rpn = function (i) { return Float2.scale (Float2.normalize (rp[rpIndex[i]]), rpSign[i]); };
+    makeRevolve ("ring",
+        [rpi(0), rpi (1), rpi (2), rpi (3), rpi (4), rpi (5), rpi (6), rpi (7), rpi (8), rpi (9), rpi (10)],
+        [rpn (0), rpn (1), rpn (2), rpn (3), [0.0, -1.0], [0.0, -1.0], rpn (6), rpn (7), rpn (8), [0.0, 1.0], [0.0, 1.0],],
+        48);
+
 
     //gl = canvas.getContext ("webgl", { alpha: false });
     scene = Node.new ({
@@ -171,7 +185,7 @@ let buildScene = function () {
             standardUniforms.LIGHT_DIRECTION = Float3.normalize ([1.55, 1.75, 1.45]);
             standardUniforms.AMBIENT_CONTRIBUTION = 0.25;
             standardUniforms.DIFFUSE_CONTRIBUTION = 0.75;
-            standardUniforms.SPECULAR_CONTRIBUTION = 0.05;
+            standardUniforms.SPECULAR_CONTRIBUTION = 0.25;
             standardUniforms.SPECULAR_EXPONENT = 8.0;
             standardUniforms.TEXTURE_SAMPLER = "xxx";
 

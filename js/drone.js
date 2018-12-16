@@ -330,7 +330,12 @@ let Drone = function () {
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
-                    standardUniforms.MODEL_COLOR =  [0.5, 0.25, 0.125];
+                    switch (i) {
+                        case 0: case 6: standardUniforms.MODEL_COLOR = [0.0, 1.0, 0.0]; break;
+                        case 2: case 4: standardUniforms.MODEL_COLOR = [1.0, 0.0, 0.0]; break;
+                        case 5: standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0]; break;
+                        default: standardUniforms.MODEL_COLOR = [0.5, 0.25, 0.125]; break;
+                    }
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
                 },
                 shape: "sphere2",
@@ -342,22 +347,96 @@ let Drone = function () {
         parentNode.addChild (Node.new ({
                 transform: Float4x4.identity (),
                 state: function (standardUniforms) {
-                    Program.get ("basic-texture").use ();
-                    standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
                 },
             }, "drone-model")
             .addChild (Node.new ({
-                transform: Float4x4.rotateX (Math.PI / -2),
+                transform: Float4x4.chain (Float4x4.translate ([0.62, 0.05, 0.62])),
                 state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 0.6, 0.125];
+                },
+                shape: "ring",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.translate ([-0.62, 0.05, 0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 0.6, 0.125];
+                },
+                shape: "ring",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.translate ([-0.62, 0.05, -0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 0.6, 0.125];
+                },
+                shape: "ring",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.translate ([0.62, 0.05, -0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 0.6, 0.125];
+                },
+                shape: "ring",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.scale (0.05), Float4x4.translate ([0.62, 0.05, 0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [0.1, 0.1, 0.1];
+                },
+                shape: "sphere2",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.scale (0.05), Float4x4.translate ([-0.62, 0.05, 0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [0.1, 0.1, 0.1];
+                },
+                shape: "sphere2",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.scale (0.05), Float4x4.translate ([-0.62, 0.05, -0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [0.1, 0.1, 0.1];
+                },
+                shape: "sphere2",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.scale (0.05), Float4x4.translate ([0.62, 0.05, -0.62])),
+                state: function (standardUniforms) {
+                    Program.get ("basic").use ();
+                    standardUniforms.MODEL_COLOR = [0.1, 0.1, 0.1];
+                },
+                shape: "sphere2",
+                children: false
+            }))
+            .addChild (Node.new ({
+                transform: Float4x4.chain (Float4x4.rotateX (Math.PI / -2), Float4x4.scale ([1.1, 1, 1.1])),
+                state: function (standardUniforms) {
+                    Program.get ("basic-texture").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
                     standardUniforms.TEXTURE_SAMPLER = "drone-deck";
                 },
                 shape: "square",
                 children: false
             }))
             .addChild (Node.new ({
-                transform: Float4x4.chain (Float4x4.rotateX (Math.PI / -2), Float4x4.translate ([0, 0.05, 0])),
+                transform: Float4x4.chain (Float4x4.rotateX (Math.PI / -2), Float4x4.translate ([0, 0.05, 0]), Float4x4.scale ([1.1, 1, 1.1])),
                 state: function (standardUniforms) {
+                    Program.get ("basic-texture").use ();
+                    standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
                     standardUniforms.TEXTURE_SAMPLER = "drone-props";
                 },
                 shape: "square",
