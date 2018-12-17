@@ -32,7 +32,7 @@ let DroneThing = function () {
     };
 
     _.goto = function (newGoal) {
-        Node.get (this.name + " (target)").transform = Float4x4.chain (Float4x4.scale (0.1), Float4x4.translate (newGoal));
+        Node.get (this.name + " (target)").transform = Float4x4.chain (Float4x4.scale (0.05), Float4x4.translate (newGoal));
         let delta = Float3.norm (Float3.subtract (newGoal, this.goal));
         //console.log (this.name + ", go from: " + Float3.str (this.goal) + ", to: " + Float3.str (newGoal) + ", distance: " + delta.toFixed (3));
         this.goal = newGoal;
