@@ -105,6 +105,11 @@ let Drone = function () {
 
         this.stun = false;
         this.goal = { x: 0, y: 2, z: 0 };
+
+        let flashers = this.flashers = [];
+        for (let i = 0; i < 5; ++i) {
+            flashers.push (Flasher.new ());
+        }
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -167,7 +172,6 @@ let Drone = function () {
         for (let i = 0; i < subSteps; ++i) {
             this.subUpdateParticles(subStepDeltaTime);
             this.subUpdate(subStepDeltaTime);
-
         }
 
         // do a little update to keep everything normalized (numerical methods drift, this provides
@@ -176,6 +180,11 @@ let Drone = function () {
         let transform = this.transform;
         for (let particle of particles) {
             particle.position = Float4x4.preMultiply (particle.base, transform);
+        }
+
+        // update the flashers
+        for (let flasher of this.flashers) {
+            flasher.update (deltaTime);
         }
 
         // update the scene graph nodes
@@ -325,16 +334,23 @@ let Drone = function () {
 
     _.addToScene = function (parentNode) {
         console.log ("Drone named: " + this.name);
+        let that = this;
         // put down the dots we will use for each of the drone particles
         for (let i = 0; i < this.particles.length;  ++i) {
             parentNode.addChild(Node.new({
                 transform: Float4x4.identity(),
                 state: function (standardUniforms) {
-
                     switch (i) {
-                        case 0: case 6: standardUniforms.MODEL_COLOR = [0.0, 1.0, 0.0]; Program.get("color").use(); break;
-                        case 2: case 4: standardUniforms.MODEL_COLOR = [1.0, 0.0, 0.0]; Program.get("color").use();break;
-                        case 5: standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0]; Program.get("color").use();break;
+                        case 0: standardUniforms.MODEL_COLOR = [0.0, 0.25 + (that.flashers[0].getIsOn() * 0.75), 0.0]; Program.get("color").use(); break;
+                        case 6: standardUniforms.MODEL_COLOR = [0.0, 0.25 + (that.flashers[1].getIsOn () * 0.75), 0.0]; Program.get("color").use(); break;
+                        case 2: standardUniforms.MODEL_COLOR = [0.25 + (that.flashers[2].getIsOn () * 0.75), 0.0, 0.0]; Program.get("color").use();break;
+                        case 4: standardUniforms.MODEL_COLOR = [0.25 + (that.flashers[3].getIsOn () * 0.75), 0.0, 0.0]; Program.get("color").use();break;
+                        case 5: {
+                            let isOn = that.flashers[4].getIsOn ();
+                            standardUniforms.MODEL_COLOR = [0.25 + (isOn * 0.75), 0.25 + (isOn * 0.75), 0.2 + (isOn * 0.6)];
+                            Program.get ("color").use ();
+                            break;
+                        }
                         default: standardUniforms.MODEL_COLOR = [0.5, 0.25, 0.125]; Program.get("basic").use();break;
                     }
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;

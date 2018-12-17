@@ -12,7 +12,6 @@ const targetFrameDeltaTimeMs = 1000.0 * deltaTime * 0.9;
 let fpsHistory = RollingAverage.new ({ count: targetFrameRate });
 
 let droneOne;
-let droneTwo;
 
 let animateCheckbox;
 let displayFpsSpan;
@@ -73,7 +72,7 @@ let drawFrame = function () {
         Thing.updateAll (deltaTime);
     }
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (40, context.viewportWidth / context.viewportHeight, 0.1, 64);
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (50, context.viewportWidth / context.viewportHeight, 0.1, 64);
     let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.5, 3, 4]);
     standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
@@ -156,13 +155,13 @@ let buildScene = function () {
     ;
 
     // add some "space" nodes to give a sense of motion, spaced at 1x1, from -12 .. 12
-    let spaceHigh = 12;
+    let spaceHigh = 16;
     let spaceLow = -spaceHigh;
     let spaceSpacing = 1;
     for (let i = spaceLow; i <= spaceHigh; i+= spaceSpacing) {
         for (let k = spaceLow; k <= spaceHigh; k+= spaceSpacing) {
             scene.addChild (Node.new({
-                transform:  Float4x4.chain (Float4x4.scale (0.0125), Float4x4.translate ([i, 0, k])),
+                transform:  Float4x4.chain (Float4x4.scale (0.015), Float4x4.translate ([i, 0, k])),
                 state: function (standardUniforms) {
                     Program.get("basic").use();
                     //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
@@ -176,18 +175,24 @@ let buildScene = function () {
     }
 
 
+    // lay down a pack of drones
+    let count = 0;
+    let droneHigh = 3;
+    let droneLow = -droneHigh;
+    let droneSpacing = 3;
+    for (let i = droneLow; i <= droneHigh; i += droneSpacing) {
+        for (let j = droneLow; (count < 6) && (j <= droneHigh); j += droneSpacing) {
+            if (! ((i === 0) && (j === 0))) {
+                ++count;
+                DroneThing.new ({ goal: [i, 1, j] }).addToScene (scene);
+            }
+        }
+    }
+
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
     droneOne = DroneThing.new ({ goal: [0, 1, 0] }, "one").addToScene (scene);
-    droneTwo = DroneThing.new ({ goal: [3, 1, -3] }, "two").addToScene (scene);
-    DroneThing.new ({ goal: [-3, 1, 3] }).addToScene (scene);
-    DroneThing.new ({ goal: [3, 1, 3] }).addToScene (scene);
-    DroneThing.new ({ goal: [-3, 1, -3] }).addToScene (scene);
 
-    DroneThing.new ({ goal: [-3, 1, -7] }).addToScene (scene);
-    DroneThing.new ({ goal: [3, 1, -7] }).addToScene (scene);
-    DroneThing.new ({ goal: [-3, 1, -7] }).addToScene (scene);
-    //droneTwo = Drone.new ({transform: Float4x4.translate ([3, 1, -3])}, "two").addToScene (scene);
     drawFrame ();
 };
 

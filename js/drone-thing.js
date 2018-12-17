@@ -19,7 +19,7 @@ let DroneThing = function () {
             let axes = controller ? controller.axes : [0, 0, 0, 0];
             */
             let newGoal = Float3.copy (this.goal);
-            let radius = 11.0;
+            let radius = 15.0;
 
             // force the thing to make big moves
             while (Float3.norm (Float3.subtract (newGoal, this.goal)) < radius) {
@@ -46,7 +46,8 @@ let DroneThing = function () {
             transform: Float4x4.identity (),
             state: function (standardUniforms) {
                 Program.get ("basic").use ();
-                standardUniforms.MODEL_COLOR = [0.1, 0.5, 1.0];
+                standardUniforms.MODEL_COLOR = [0.3, 0.7, 1.0];
+                //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
             },
             shape: "sphere2",
             children: false
