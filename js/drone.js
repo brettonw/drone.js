@@ -191,7 +191,7 @@ let Drone = function () {
         for (let i = 0; i < particles.length;  ++i) {
             let particle = particles[i];
             Node.get (this.name + " (particle-" + i + ")").transform = Float4x4.chain (
-                Float4x4.scale (0.0002 * particle.mass),
+                Float4x4.scale (0.00025 * particle.mass),
                 //Float4x4.translate (particle.base),
                 //transform
                 Float4x4.translate (particle.position)

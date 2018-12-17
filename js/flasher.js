@@ -6,8 +6,8 @@ let Flasher = function () {
     _.construct = function (parameters) {
         this.on = (Math.random () > 0.5);
         this.time = Math.random ();
-        this.onDuration = 0.1 + ((Math.random () * 0.1) - 0.05);
-        this.offDuration = 1.0 + ((Math.random () * 0.3) - 0.15);
+        this.onDuration = 0.1 + (Math.random () * 0.05);
+        this.offDuration = 1.0 + (Math.random () * 0.3);
     };
 
     _.update = function (deltaTime) {
