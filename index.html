@@ -4,11 +4,24 @@
         <meta charset="UTF-8">
         <title>drone.js</title>
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-
+        <link rel="stylesheet" href="plot-svg/plot-svg.css" />
     </head>
     <style>
         html {
             box-sizing: border-box;
+        }
+
+        .plot-container {
+            width: 390px;
+            height: 260px;
+            margin: 0 auto;
+        }
+
+        .plot {
+            margin: 10px;
+            display: inline-block;
+            width: 100%;
+            height: 100%;
         }
     </style>
     <body onload="main ();">
@@ -21,11 +34,13 @@
                 <div style="display: inline-block;"><input type="checkbox" id="animateCheckbox" onchange="clickAnimateCheckbox ();" CHECKED> Animated</div>
                 <div style="display: inline-block;float:right;" id="displayFpsSpan">0</div>
             </div>
+            <div class="plot-container"><div class="plot" id="plot-error"></div></div>
         </div>
     </body>
 </html>
 
 <script src="https://brettonw.github.io/webgl.js/src/main/webapp/webgl-debug.js"></script>
+<script src="plot-svg/plot-svg.js"></script>
 <script src="js/constants.js"></script>
 <script src="js/rolling-average.js"></script>
 <script src="js/world-state.js"></script>
@@ -36,4 +51,6 @@
 <script src="js/flasher.js"></script>
 <script src="js/drone.js"></script>
 <script src="js/drone-thing.js"></script>
+<script src="js/drone-tester.js"></script>
+<script src="js/drone-tuner.js"></script>
 <script src="js/index.js"></script>

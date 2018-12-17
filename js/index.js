@@ -76,7 +76,7 @@ let drawFrame = function () {
     let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.75, 2.75, 3.25]);
     standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
-    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 8], droneOne.drone.position), droneOne.drone.position, [0, 1, 0]);
+    //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 4], droneOne.drone.position), droneOne.drone.position, [0, 1, 0]);
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms
@@ -174,7 +174,6 @@ let buildScene = function () {
         }
     }
 
-
     // lay down a pack of drones
     let count = 0;
     let droneHigh = 3;
@@ -184,14 +183,14 @@ let buildScene = function () {
         for (let j = droneLow; (count < 6) && (j <= droneHigh); j += droneSpacing) {
             if (! ((i === 0) && (j === 0))) {
                 ++count;
-                DroneThing.new ({ goal: [i, 1, j] }).addToScene (scene);
+                DroneTester.new ({ goal: [i, 1, j] }).addToScene (scene);
             }
         }
     }
 
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
-    droneOne = DroneThing.new ({ goal: [0, 1, 0] }, "one").addToScene (scene);
+    droneOne = DroneTester.new ({ goal: [0, 1, 0] }, "one").addToScene (scene);
 
     drawFrame ();
 };

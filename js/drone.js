@@ -88,19 +88,23 @@ let Drone = function () {
 
         // set up the controller PIDs - we scale the x-z location PIDs to prevent the drone from
         // flipping itself over
+        /* from the hand tuned settings
+        this.drone.controller.locationX.gains =   { p: 0.6, i: 0.0, d: 1.0 };
+        this.drone.controller.locationY.gains =   { p: 0.6, i: 0.0, d: 0.5 };
+        this.drone.controller.locationZ.gains =   { p: 0.6, i: 0.0, d: 1.0 };
+        this.drone.controller.orientation.gains = { p: 0.6, i: 0.0, d: 0.65 };
+        this.drone.controller.tiltX.gains =       { p: 0.6, i: 0.0, d: 0.55 };
+        this.drone.controller.tiltZ.gains =       { p: 0.6, i: 0.0, d: 0.55 };
+         */
         this.controller = {
-            orientation: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }, deltaFunction: function (x, y) {
+            locationX: PID.new (  { gains: { p: 0.6, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+            locationY: PID.new (  { gains: { p: 0.6, i: 0.0, d: 0.6 }}),
+            locationZ: PID.new (  { gains: { p: 0.6, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+            orientation: PID.new ({ gains: { p: 0.6, i: 0.0, d: 0.65 }, deltaFunction: function (x, y) {
                     return Math.conditionAngle (y - x) / Math.PI;
                 }}),
-            tilt: {
-                x: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }}),
-                z: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }})
-            },
-            location: {
-                x: PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
-                y: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.75 }}),
-                z: PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 })
-            }
+            tiltX: PID.new (      { gains: { p: 0.6, i: 0.0, d: 0.55 }}),
+            tiltZ: PID.new (      { gains: { p: 0.6, i: 0.0, d: 0.55 }})
         };
 
         this.stun = false;
@@ -146,7 +150,7 @@ let Drone = function () {
             constraint.apply (subStepDeltaTime);
         }
 
-        // apply gravity and air resistance to all the particles
+        // apply gravity and air resistance to all the particles, and update them
         for (let particle of particles) {
             particle.applyGravity (subStepDeltaTime);
             particle.applyDrag ();
@@ -158,7 +162,7 @@ let Drone = function () {
 
     _.subUpdate = function (subStepDeltaTime) {
         if (this.stun === false) {
-            this.runController (this.goal.x, this.goal.y, this.goal.z, subStepDeltaTime);
+            this.runController (subStepDeltaTime);
             for (let i = 0, end = this.motors.length; i < end; ++i) {
                 this.runMotor (i, this.motors[i]);
             }
@@ -285,7 +289,7 @@ let Drone = function () {
         this.motors[3] = -Math.clamp (speed * turnRatio13 * xTiltRatio03 * zTiltRatio23, 0, 1);
     };
 
-    _.runController = function (x, y, z, deltaTime) {
+    _.runController = function (deltaTime) {
         /*
         console.log ("TRANSFORM");
         let axisNames = ["X-axis:    ", "Y-axis:    ", "Z-axis:    ", "Translate: "];
@@ -303,23 +307,24 @@ let Drone = function () {
 
         let controller = this.controller;
         let transform = this.transform;
+        let goal = this.goal;
 
         // compute the altitude of the drone using the y component of the translation
-        let speed = (controller.location.y.update (transform[13], y, deltaTime) + 1.0) / 2.0;
+        let speed = (controller.locationY.update (transform[13], goal.y, deltaTime) + 1.0) / 2.0;
 
         // compute the orientation of the drone using the x/z components of the x axis - our goal is
         // to always orient the drone with the x/z axes
         let orientationAngle = Math.atan2(transform[2], transform[0]);
         let turn = -controller.orientation.update (orientationAngle, 0.0, deltaTime);
 
-        // compute the target tilt using the target location
-        let xVel = controller.location.x.update (transform[12], x, deltaTime);
-        let zVel = controller.location.z.update (transform[14], z, deltaTime);
+        // compute the target tilt using as a proxy for target velocity to the target location
+        let xVel = controller.locationX.update (transform[12], goal.x, deltaTime);
+        let zVel = controller.locationZ.update (transform[14], goal.z, deltaTime);
 
         // compute the tilt of the drone using the x/z components of the y axis
         let tilt = {
-            x: controller.tilt.x.update (transform[4], xVel, deltaTime),
-            z: controller.tilt.z.update (transform[6], zVel, deltaTime)
+            x: controller.tiltX.update (transform[4], xVel, deltaTime),
+            z: controller.tiltZ.update (transform[6], zVel, deltaTime)
         };
 
         // give the drone the inputs
