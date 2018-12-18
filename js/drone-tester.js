@@ -13,7 +13,7 @@ let DroneTester = function () {
     _.update = function (deltaTime) {
         // check if the drone is at the goal
         let distanceToTarget = Float3.norm (Float3.subtract (this.drone.position, this.goal));
-        if (distanceToTarget < 0.1) {
+        if (distanceToTarget < 0.25) {
             // it is, so start counting down until time to leave
             this.countdownTime -= deltaTime;
 
@@ -32,9 +32,9 @@ let DroneTester = function () {
 
                 // force the thing to make big moves
                 while (Float3.norm (Float3.subtract (newGoal, this.goal)) < (radius * 1.25)) {
-                    newGoal[0] = Math.floor (Math.random () * radius * 2) - radius;
-                    newGoal[1] = 1.5 + Math.floor (Math.random () * radius);
-                    newGoal[2] = Math.floor (Math.random () * radius * 2) - radius;
+                    newGoal[0] = (Math.floor (Math.random () * (radius / 3) * 2) * 3) - radius;
+                    newGoal[1] = 1.5 + (Math.floor (Math.random () * (radius / 3)) * 3);
+                    newGoal[2] = (Math.floor (Math.random () * (radius / 3) * 2) * 3) - radius;
                 }
                 this.goto (newGoal);
             }
