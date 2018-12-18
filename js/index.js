@@ -49,7 +49,6 @@ let updateRunFocus = function () {
 
 let lastTime = new Date ().getTime ();
 let drawFrame = function () {
-
     if ((animateCheckbox.checked) && (runFocus === true)) {
         // draw again as fast as possible
         window.requestAnimationFrame (drawFrame);
@@ -190,7 +189,7 @@ let buildScene = function () {
 
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
-    droneOne = DroneTester.new ({ goal: [0, 1.5, 0] }, "one").addToScene (scene);
+    droneOne = DroneTester.new ({ goal: [0, 1.5, 0], debug: false }, "one").addToScene (scene);
 
     drawFrame ();
 };

@@ -9,7 +9,7 @@ let DistanceConstraint = function () {
         let totalMass = this.totalMass = a.mass + b.mass;
         this.length = Float3.norm (Float3.subtract (a.position, b.position));
 
-        this.springConstant = Utility.defaultValue (parameters.springConstant, 5000.0);
+        this.springConstant = Utility.defaultValue (parameters.springConstant, 1e3);
         this.damping = Utility.defaultValue (parameters.damping, 0.2);
         console.log ("DistanceConstraint: (" + parameters.a + " -> " + parameters.b + "), length: " + this.length.toFixed(3));
     };

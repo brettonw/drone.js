@@ -5,7 +5,7 @@ let DroneThing = function () {
 
     _.construct = function (parameters) {
         this.goal = Utility.defaultValue (parameters.goal, [0, 2, 0]);
-        this.drone = Drone.new ({ transform: Float4x4.translate (this.goal) });
+        this.drone = Drone.new ({ transform: Float4x4.translate (this.goal), debug: Utility.defaultValue (parameters.debug, false) });
     };
 
     _.update = function (deltaTime) {

@@ -18,10 +18,7 @@ let Drone = function () {
         // copy a transformation matrix if one was provided
         let transform = this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
 
-        // the model is assumed to start at rest
-        // the drone uses a shape something like a squashed octahedron, with 6 points and 13 edges
-        // that define a connected set of 4 tetrahedrons as stable shapes. we assume all of the
-        // vertices have a mass of about 125g.
+        // define a group of particles that we will use to build our triangulated, stable structure
         let particles = this.particles = [
             Particle.new ({ position: [ 1.0,  0.5, -1.0], mass: 100 }), // 0
             Particle.new ({ position: [ 0.0,  0.5, -0.6], mass: 125 }), // 1
@@ -42,8 +39,8 @@ let Drone = function () {
         }
         this.motorForce = (2 * mass * Math.GRAVITY) / 4;
 
-
-        // establish the distance constraints that hold the drone together
+        // establish the triangulated distance constraints that hold the particles together as a
+        // stable structure
         let constraints = this.constraints = [
             DistanceConstraint.new ({particles: particles, a: 0, b: 1}),
             DistanceConstraint.new ({particles: particles, a: 1, b: 2}),
@@ -72,7 +69,7 @@ let Drone = function () {
         ];
 
         // the points might have been defined in a "comfortable" way, where the centroid is not at
-        // the origin, so we'll compute the centroid and relocate the points - so the position is at
+        // the origin; we'll compute the centroid and relocate the points - so the position is at
         // the origin
         let position = computePosition (this.particles);
         for (let particle of particles) {
@@ -80,22 +77,15 @@ let Drone = function () {
             particle.position = Float4x4.preMultiply (particle.base, transform);
         }
 
-        // start the model off with no velocity...
+        // position *SHOULD* be at the origin, and start the model off with no velocity...
         this.position = computePosition (this.particles);
         this.velocity = Float3.create ().fill (0);
 
         this.motors = [0, 0, 0, 0];
 
-        // set up the controller PIDs - we scale the x-z location PIDs to prevent the drone from
+        // set up the controller PIDs - we scale the x-z location PIDs to limit the allowed output
+        // prevent the drone from
         // flipping itself over
-        /* from the hand tuned settings
-        this.drone.controller.locationX.gains =   { p: 0.6, i: 0.0, d: 1.0 };
-        this.drone.controller.locationY.gains =   { p: 0.6, i: 0.0, d: 0.5 };
-        this.drone.controller.locationZ.gains =   { p: 0.6, i: 0.0, d: 1.0 };
-        this.drone.controller.orientation.gains = { p: 0.6, i: 0.0, d: 0.65 };
-        this.drone.controller.tiltX.gains =       { p: 0.6, i: 0.0, d: 0.55 };
-        this.drone.controller.tiltZ.gains =       { p: 0.6, i: 0.0, d: 0.55 };
-         */
         this.controller = {
             locationX: PID.new (  { gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
             locationY: PID.new (  { gains: { p: 0.5, i: 0.0, d: 0.65 }}),
@@ -107,13 +97,23 @@ let Drone = function () {
             tiltZ: PID.new (      { gains: { p: 0.5, i: 0.0, d: 0.55 }})
         };
 
+        // drones are only alive if they haven't crashed, we call that "stunned", and start out
+        // *NOT* stunned
         this.stun = false;
-        this.goal = { x: 0, y: 2, z: 0 };
 
+        // default start goal, we create this here *NOT* to set the goal, but to create the object
+        // that will hold the goal values as we continue
+        this.goal = { x: 0, y: 1, z: 0 };
+
+        // some of the particle nodes will flash brightly to resemble running lights. these control
+        // the flash timing
         let flashers = this.flashers = [];
         for (let i = 0; i < 5; ++i) {
             flashers.push (Flasher.new ());
         }
+
+        // copy if the drone is created in a debug state
+        this.debug = Utility.defaultValue (parameters.debug, false);
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -125,36 +125,33 @@ let Drone = function () {
         //console.log ("Velocity: " + Float3.str (this.velocity));
         this.position = position;
 
-        // the Y frame will be the average of pts 0, 2, 4, and 6 minus point 8
+        // the Y frame will be the average of pts 0, 2, 4, and 6; minus point 8
         let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
         let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
         let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
         let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[0].position));
-
         let Z2 = Float3.cross (X, Y);
-        let Z3 = Float3.normalize (Float3.add (Z, Z2));
+        Z = Float3.normalize (Float3.add (Z, Z2));
+        X = Float3.cross (Y, Z);
 
-        let X2 = Float3.cross (Y, Z3);
-
-        let transform = this.transform = Float4x4.inverse (Float4x4.viewMatrix (X2, Y, Z3, position));
+        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, position));
     };
 
     _.subUpdateParticles = function (subStepDeltaTime) {
         let particles = this.particles;
 
-        // apply the ground constraint
+        // apply the ground constraint, then loop over all the distance constraints to apply them
         this.stun = GroundConstraint.apply (particles, subStepDeltaTime) || this.stun;
-
-        // loop over all the distance constraints to apply them
         for (let constraint of this.constraints) {
             constraint.apply (subStepDeltaTime);
         }
 
         // apply gravity and air resistance to all the particles, and update them
         for (let particle of particles) {
-            particle.applyGravity (subStepDeltaTime);
-            particle.applyDrag ();
-            particle.update (subStepDeltaTime);
+            particle
+                .applyGravity (subStepDeltaTime)
+                .applyDrag ()
+                .update (subStepDeltaTime);
         }
 
         this.updateCoordinateFrame (subStepDeltaTime);
@@ -171,36 +168,39 @@ let Drone = function () {
 
     _.update = function (deltaTime) {
         let particles = this.particles;
-        let subSteps = Math.floor (1000 / targetFrameRate);
+
+        // we want to update the physics simulation faster than we display it, the goal is a total
+        // of *about* 1,000Hz.
+        let subSteps = Math.floor(1000 / targetFrameRate);
         let subStepDeltaTime = deltaTime / subSteps;
         for (let i = 0; i < subSteps; ++i) {
             this.subUpdateParticles(subStepDeltaTime);
             this.subUpdate(subStepDeltaTime);
         }
 
-        // do a little update to keep everything normalized (numerical methods drift, this provides
-        // a regular reset to counteract the drift). reset all of the points to their base,
-        // transformed by the transform
+        // update the scene graph nodes - this is primarily a debugging tool, as the particle nodes
+        // exist as static transforms relative to the base... do this BEFORE we re-normalize
+        if (this.debug === true) {
+            for (let i = 0; i < particles.length; ++i) {
+                let particle = particles[i];
+                Node.get(this.name + " (particle-" + i + ")").transform = Float4x4.chain(Float4x4.scale(0.05), Float4x4.translate(particles[i].position));
+            }
+        }
+
+        // numerical methods drift, a regular re-normalization counteracts the drift. all of the
+        // points are reset to their base multiplied by the transform (as computed in
+        // updateCoordinateFrame).
         let transform = this.transform;
         for (let particle of particles) {
-            particle.position = Float4x4.preMultiply (particle.base, transform);
+            particle.position = Float4x4.preMultiply(particle.base, transform);
         }
 
         // update the flashers
         for (let flasher of this.flashers) {
-            flasher.update (deltaTime);
+            flasher.update(deltaTime);
         }
 
-        // update the scene graph nodes
-        for (let i = 0; i < particles.length;  ++i) {
-            let particle = particles[i];
-            Node.get (this.name + " (particle-" + i + ")").transform = Float4x4.chain (
-                Float4x4.scale (0.0002 * particle.mass),
-                //Float4x4.translate (particle.base),
-                //transform
-                Float4x4.translate (particle.position)
-            );
-        }
+        // and finally - set the transform on the node so we can draw the drone
         Node.get (this.name + " (drone-model)").transform = transform;
     };
 
@@ -215,7 +215,8 @@ let Drone = function () {
         // speed is positive for clockwise, negative for counter-clockwise [-1..1]
 
         // the motor is mounted in a triangular bracket at three points, and to apply the motor
-        // forces we compute the torque application vectors and the force application vectors
+        // forces we compute the torque application vectors and the force application vectors at
+        // those three points
         let particles = this.particles;
         let boundaryParticleIndexes = boundaryParticleIndexGroups[which];
         let a = particles[boundaryParticleIndexes[0]];
@@ -255,7 +256,10 @@ let Drone = function () {
         let pb = Float3.scale (Float3.normalize (Float3.cross (n, ob)), 1.0 / obLength);
         let pc = Float3.scale (Float3.normalize (Float3.cross (n, oc)), 1.0 / ocLength);
 
-        // compute the torque and thrust forces for the motor at speed
+        // compute the torque and thrust forces for the motor at the requested speed, remember that
+        // this model assumes the motors produce positive thrust, regardless of the sign of the
+        // speed. the reason is that drones run motors in opposite directions to use the torque to
+        // control orientation - we don't run the prop backwards to create reverse thrust.
         let torque = (1e4 * speed) / 3.0;
         let force = (this.motorForce * Math.abs (speed)) / 3.0;
 
@@ -266,23 +270,25 @@ let Drone = function () {
     };
 
     _.run = function (speed, turn, tilt) {
-        // speed is a value 0..1, assuming motors are always running in a direction that produces lift
-
         // motors are configured like this:
         // 1 0
         // 2 3
         // 0 and 2 are run clockwise, 1 and 3 are run counter-clockwise
-        // turn is a -1..1 value that gets turned into a ratio of 0-2 to 1-3 (1 is all 1-3, -1 is all 0-2)
+
+        // turn is a -1..1 value that gets turned into a ratio of 0-2 to 1-3 (input of 1 maps to
+        // all 1-3, and input of -1 maps to all 0-2)
         let turnRatio02 = turn + 1.0;
         let turnRatio13 = 2.0 - turnRatio02;
 
-        // now tilt is an x-y vector, where each axis is a ratio of motors 1-0 to 2-3, or motors 1-2 to 0-3
+        // now tilt is an x-y vector, where each axis is a ratio of pairs of motors to the opposing
+        // pair. the z-axis ratio is motors 0-1 to 2-3, and the x-axis ratio is motors 1-2 to 0-3
         let xTiltRatio12 = tilt.x + 1.0;
         let xTiltRatio03 = 2.0 - xTiltRatio12;
-
         let zTiltRatio01 = tilt.z + 1.0;
         let zTiltRatio23 = 2.0 - zTiltRatio01;
 
+        // the final run speeds are a linear combination of all the ratios with speed, which is a
+        // value 0..1, assuming motors are always running in a direction that produces lift
         this.motors[0] = Math.clamp (speed * turnRatio02 * xTiltRatio03 * zTiltRatio01, 0, 1);
         this.motors[1] = -Math.clamp (speed * turnRatio13 * xTiltRatio12 * zTiltRatio01, 0, 1);
         this.motors[2] = Math.clamp (speed * turnRatio02 * xTiltRatio12 * zTiltRatio23, 0, 1);
@@ -290,21 +296,7 @@ let Drone = function () {
     };
 
     _.runController = function (deltaTime) {
-        /*
-        console.log ("TRANSFORM");
-        let axisNames = ["X-axis:    ", "Y-axis:    ", "Z-axis:    ", "Translate: "];
-        for (let i = 0; i < 4; ++i) {
-            let line = axisNames[i];
-            let separator = "";
-            let row = i * 4;
-            for (let j = 0; j < 4; ++j) {
-                line += separator + this.transform[row + j].toFixed(3);
-                separator = ", ";
-            }
-            console.log (line);
-        }
-        */
-
+        // because I hate having to type "this." all the time...
         let controller = this.controller;
         let transform = this.transform;
         let goal = this.goal;
@@ -312,16 +304,19 @@ let Drone = function () {
         // compute the altitude of the drone using the y component of the translation
         let speed = (controller.locationY.update (transform[13], goal.y, deltaTime) + 1.0) / 2.0;
 
-        // compute the orientation of the drone using the x/z components of the x axis - our goal is
-        // to always orient the drone with the x/z axes
+        // compute the orientation of the drone using the x and z components of the x-axis - our
+        // goal is to always orient the drone with the x and z axes (the other assumptions are
+        // violated if the drone turns, and it will become unstable if it turns too much. we rely on
+        // a rapid update cycle to keep the orientation close to the stable configuration).
         let orientationAngle = Math.atan2(transform[2], transform[0]);
         let turn = -controller.orientation.update (orientationAngle, 0.0, deltaTime);
 
-        // compute the target tilt using as a proxy for target velocity to the target location
+        // compute the required velocity input to reach the target location in each axis
         let xVel = controller.locationX.update (transform[12], goal.x, deltaTime);
         let zVel = controller.locationZ.update (transform[14], goal.z, deltaTime);
 
-        // compute the tilt of the drone using the x/z components of the y axis
+        // use the velocity input to compute the tilt input, we measure these values by looking at
+        // x and z components of the y axis.
         let tilt = {
             x: controller.tiltX.update (transform[4], xVel, deltaTime),
             z: controller.tiltZ.update (transform[6], zVel, deltaTime)
@@ -340,33 +335,26 @@ let Drone = function () {
     _.addToScene = function (parentNode) {
         console.log ("Drone named: " + this.name);
         let that = this;
-        // put down the dots we will use for each of the drone particles
-        for (let i = 0; i < this.particles.length;  ++i) {
-            parentNode.addChild(Node.new({
-                transform: Float4x4.identity(),
-                state: function (standardUniforms) {
-                    switch (i) {
-                        case 0: standardUniforms.MODEL_COLOR = [0.0, 0.25 + (that.flashers[0].getIsOn() * 0.75), 0.0]; Program.get("color").use(); break;
-                        case 6: standardUniforms.MODEL_COLOR = [0.0, 0.25 + (that.flashers[1].getIsOn () * 0.75), 0.0]; Program.get("color").use(); break;
-                        case 2: standardUniforms.MODEL_COLOR = [0.25 + (that.flashers[2].getIsOn () * 0.75), 0.0, 0.0]; Program.get("color").use();break;
-                        case 4: standardUniforms.MODEL_COLOR = [0.25 + (that.flashers[3].getIsOn () * 0.75), 0.0, 0.0]; Program.get("color").use();break;
-                        case 5: {
-                            let isOn = that.flashers[4].getIsOn ();
-                            standardUniforms.MODEL_COLOR = [0.25 + (isOn * 0.75), 0.25 + (isOn * 0.75), 0.2 + (isOn * 0.6)];
-                            Program.get ("color").use ();
-                            break;
-                        }
-                        default: standardUniforms.MODEL_COLOR = [0.5, 0.25, 0.125]; Program.get("basic").use();break;
-                    }
-                    standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
-                },
-                shape: "sphere2",
-                children: false
-            }, this.name + " (particle-" + i + ")"));
+
+        let particles = this.particles;
+
+        // put down the dots we will use for each of the drone particles - this is a debugging tool
+        if (this.debug === true) {
+            for (let i = 0; i < particles.length; ++i) {
+                parentNode.addChild(Node.new({
+                    transform: Float4x4.identity(),
+                    state: function (standardUniforms) {
+                        standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
+                        Program.get("basic").use();
+                    },
+                    shape: "sphere2",
+                    children: false
+                }, this.name + " (particle-" + i + ")"));
+            }
         }
 
         // put down a representation of the drone geometry for visual purposes
-        parentNode.addChild (Node.new ({
+        let modelNode = Node.new ({
                 transform: Float4x4.identity (),
                 state: function (standardUniforms) {
                     standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
@@ -463,8 +451,34 @@ let Drone = function () {
                 },
                 shape: "square",
                 children: false
-            }))
-        );
+            }));
+
+        // add the actual particles below the model node, so they transform with the drone
+        for (let i = 0; i < particles.length;  ++i) {
+            let particle = particles[i];
+            modelNode.addChild(Node.new({
+                transform: Float4x4.chain ( Float4x4.scale (0.0002 * particle.mass), Float4x4.translate (particle.base)),
+                state: function (standardUniforms) {
+                    switch (i) {
+                        case 0: standardUniforms.MODEL_COLOR = [0.0, 0.25 + (that.flashers[0].getIsOn() * 0.75), 0.0]; Program.get("color").use(); break;
+                        case 6: standardUniforms.MODEL_COLOR = [0.0, 0.25 + (that.flashers[1].getIsOn () * 0.75), 0.0]; Program.get("color").use(); break;
+                        case 2: standardUniforms.MODEL_COLOR = [0.25 + (that.flashers[2].getIsOn () * 0.75), 0.0, 0.0]; Program.get("color").use();break;
+                        case 4: standardUniforms.MODEL_COLOR = [0.25 + (that.flashers[3].getIsOn () * 0.75), 0.0, 0.0]; Program.get("color").use();break;
+                        case 5: {
+                            let isOn = that.flashers[4].getIsOn ();
+                            standardUniforms.MODEL_COLOR = [0.25 + (isOn * 0.75), 0.25 + (isOn * 0.75), 0.2 + (isOn * 0.6)];
+                            Program.get ("color").use ();
+                            break;
+                        }
+                        default: standardUniforms.MODEL_COLOR = [0.5, 0.25, 0.125]; Program.get("basic").use();break;
+                    }
+                },
+                shape: "sphere2",
+                children: false
+            }));
+        }
+
+        parentNode.addChild (modelNode);
         return this;
     };
 
