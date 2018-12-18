@@ -21,7 +21,7 @@ let WorldState = function () {
         this.time += (deltaTime * 1000.0);
 
         // generate a new perturbation on the wind direction
-        this.wind = Float3.add (this.wind, Float3.scale ([(Math.random () * 2.0) - 1.0, (Math.random () * 2.0) - 1.0, 0], 0.1));
+        this.wind = Float3.add (this.wind, Float3.scale ([(Math.random () * 2.0) - 1.0, 0.0, (Math.random () * 2.0) - 1.0], 0.1));
 
         // compute the ECS solar position so we can query it based on earth location
         // XXX TODO

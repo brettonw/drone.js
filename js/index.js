@@ -183,14 +183,14 @@ let buildScene = function () {
         for (let j = droneLow; (count < 6) && (j <= droneHigh); j += droneSpacing) {
             if (! ((i === 0) && (j === 0))) {
                 ++count;
-                DroneTester.new ({ goal: [i, 1, j] }).addToScene (scene);
+                DroneTester.new ({ goal: [i, 1.5, j] }).addToScene (scene);
             }
         }
     }
 
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
-    droneOne = DroneTester.new ({ goal: [0, 1, 0] }, "one").addToScene (scene);
+    droneOne = DroneTester.new ({ goal: [0, 1.5, 0] }, "one").addToScene (scene);
 
     drawFrame ();
 };

@@ -97,14 +97,14 @@ let Drone = function () {
         this.drone.controller.tiltZ.gains =       { p: 0.6, i: 0.0, d: 0.55 };
          */
         this.controller = {
-            locationX: PID.new (  { gains: { p: 0.6, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
-            locationY: PID.new (  { gains: { p: 0.6, i: 0.0, d: 0.6 }}),
-            locationZ: PID.new (  { gains: { p: 0.6, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
-            orientation: PID.new ({ gains: { p: 0.6, i: 0.0, d: 0.65 }, deltaFunction: function (x, y) {
+            locationX: PID.new (  { gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+            locationY: PID.new (  { gains: { p: 0.5, i: 0.0, d: 0.65 }}),
+            locationZ: PID.new (  { gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+            orientation: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.65 }, deltaFunction: function (x, y) {
                     return Math.conditionAngle (y - x) / Math.PI;
                 }}),
-            tiltX: PID.new (      { gains: { p: 0.6, i: 0.0, d: 0.55 }}),
-            tiltZ: PID.new (      { gains: { p: 0.6, i: 0.0, d: 0.55 }})
+            tiltX: PID.new (      { gains: { p: 0.5, i: 0.0, d: 0.55 }}),
+            tiltZ: PID.new (      { gains: { p: 0.5, i: 0.0, d: 0.55 }})
         };
 
         this.stun = false;
