@@ -23,7 +23,7 @@ let DroneTester = function () {
             let radius = 15.0;
 
             // force the thing to make big moves
-            while (Float3.norm (Float3.subtract (newGoal, this.goal)) < radius) {
+            while (Float3.norm (Float3.subtract (newGoal, this.goal)) < (radius * 1.25)) {
                 newGoal[0] = Math.floor (Math.random () * radius * 2) - radius;
                 newGoal[1] = 1.5 + Math.floor (Math.random () * radius);
                 newGoal[2] = Math.floor (Math.random () * radius * 2) - radius;
