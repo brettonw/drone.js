@@ -114,6 +114,22 @@ let Drone = function () {
 
         // copy if the drone is created in a debug state
         this.debug = Utility.defaultValue (parameters.debug, false);
+
+        // EXPERIMENTAL - a web worker to run the drone simulation
+        if (typeof(Worker) !== "undefined") {
+            let worker = this.worker = new Worker ("js/worker.js");
+            let that = this;
+            worker.addEventListener("message", function (event) {
+                that.handleWorkerResponse(event.data);
+            });
+            worker.postMessage ({"command": "start", "parameters": {}});
+        } else {
+            // Sorry! No Web Worker support..
+        }
+    };
+
+    _.handleWorkerResponse = function (response) {
+        //console.log ("got it (" + response + ")");
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -168,6 +184,8 @@ let Drone = function () {
 
     _.update = function (deltaTime) {
         let particles = this.particles;
+
+        this.worker.postMessage ({"command": "update", "parameters": { "deltaTime": deltaTime }});
 
         // we want to update the physics simulation faster than we display it, the goal is a total
         // of *about* 1,000Hz.
