@@ -18,18 +18,11 @@ let DroneWorker = function () {
         // copy a transformation matrix if one was provided
         let transform = this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
 
-        // define a group of particles that we will use to build our triangulated, stable structure
-        let particles = this.particles = [
-            Particle.new ({ position: [ 1.0,  0.5, -1.0], mass: 100 }), // 0
-            Particle.new ({ position: [ 0.0,  0.5, -0.6], mass: 125 }), // 1
-            Particle.new ({ position: [-1.0,  0.5, -1.0], mass: 100 }), // 2
-            Particle.new ({ position: [-0.6,  0.5,  0.0], mass: 125 }), // 3
-            Particle.new ({ position: [-1.0,  0.5,  1.0], mass: 100 }), // 4
-            Particle.new ({ position: [ 0.0,  0.5,  0.6], mass: 125 }), // 5
-            Particle.new ({ position: [ 1.0,  0.5,  1.0], mass: 100 }), // 6
-            Particle.new ({ position: [ 0.6,  0.5,  0.0], mass: 125 }), // 7
-            Particle.new ({ position: [ 0.0, -0.2,  0.0], mass: 150 })  // 8
-        ];
+        // copy the particles out of the input parameters
+        let particles = this.particles = [];
+        for (let particle of parameters.particles) {
+            particles.push (Particle.new (particle));
+        }
 
         // compute the mass, and the motor forces, such that all 4 motors at half speed are on a
         // balance with gravity
@@ -73,13 +66,9 @@ let DroneWorker = function () {
         // the origin
         let position = computePosition (this.particles);
         for (let particle of particles) {
-            particle.base = Float4.point (Float3.subtract (particle.position, position));
+            particle.base = Float4.point (particle.position);
             particle.position = Float4x4.preMultiply (particle.base, transform);
         }
-
-        // position *SHOULD* be at the origin, and start the model off with no velocity...
-        this.position = computePosition (this.particles);
-        this.velocity = Float3.create ().fill (0);
 
         this.motors = [0, 0, 0, 0];
 
@@ -103,7 +92,7 @@ let DroneWorker = function () {
 
         // default start goal, we create this here *NOT* to set the goal, but to create the object
         // that will hold the goal values as we continue
-        this.goal = { x: 0, y: 1, z: 0 };
+        this.goal = { x: 0, y: 0, z: 0 };
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -111,14 +100,11 @@ let DroneWorker = function () {
 
         // compute the centroid
         let position = computePosition (particles);
-        this.velocity = Float3.scale (Float3.subtract (position, this.position), 1.0 / deltaTime);
-        //console.log ("Velocity: " + Float3.str (this.velocity));
-        this.position = position;
 
         // the Y frame will be the average of pts 0, 2, 4, and 6; minus point 8
         let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
-        let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
         let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
+        let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
         let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[0].position));
         let Z2 = Float3.cross (X, Y);
         Z = Float3.normalize (Float3.add (Z, Z2));
@@ -168,15 +154,6 @@ let DroneWorker = function () {
             this.subUpdate(subStepDeltaTime);
         }
 
-        // update the scene graph nodes - this is primarily a debugging tool, as the particle nodes
-        // exist as static transforms relative to the base... do this BEFORE we re-normalize
-        if (this.debug === true) {
-            for (let i = 0; i < particles.length; ++i) {
-                let particle = particles[i];
-                Node.get(this.name + " (particle-" + i + ")").transform = Float4x4.chain(Float4x4.scale(0.05), Float4x4.translate(particles[i].position));
-            }
-        }
-
         // numerical methods drift, a regular re-normalization counteracts the drift. all of the
         // points are reset to their base multiplied by the transform (as computed in
         // updateCoordinateFrame).
@@ -184,10 +161,6 @@ let DroneWorker = function () {
         for (let particle of particles) {
             particle.position = Float4x4.preMultiply(particle.base, transform);
         }
-
-        // and finally - set the transform on the node so we can draw the drone
-        // XXX this will be the post message response to the drone
-        //Node.get (this.name + " (drone-model)").transform = transform;
     };
 
     let boundaryParticleIndexGroups = [

@@ -20,15 +20,15 @@ let Drone = function () {
 
         // define a group of particles that we will use to build our triangulated, stable structure
         let particles = this.particles = [
-            Particle.new ({ position: [ 1.0,  0.5, -1.0], mass: 100 }), // 0
-            Particle.new ({ position: [ 0.0,  0.5, -0.6], mass: 125 }), // 1
-            Particle.new ({ position: [-1.0,  0.5, -1.0], mass: 100 }), // 2
-            Particle.new ({ position: [-0.6,  0.5,  0.0], mass: 125 }), // 3
-            Particle.new ({ position: [-1.0,  0.5,  1.0], mass: 100 }), // 4
-            Particle.new ({ position: [ 0.0,  0.5,  0.6], mass: 125 }), // 5
-            Particle.new ({ position: [ 1.0,  0.5,  1.0], mass: 100 }), // 6
-            Particle.new ({ position: [ 0.6,  0.5,  0.0], mass: 125 }), // 7
-            Particle.new ({ position: [ 0.0, -0.2,  0.0], mass: 150 })  // 8
+            { position: [ 1.0,  0.5, -1.0], mass: 100 }, // 0
+            { position: [ 0.0,  0.5, -0.6], mass: 125 }, // 1
+            { position: [-1.0,  0.5, -1.0], mass: 100 }, // 2
+            { position: [-0.6,  0.5,  0.0], mass: 125 }, // 3
+            { position: [-1.0,  0.5,  1.0], mass: 100 }, // 4
+            { position: [ 0.0,  0.5,  0.6], mass: 125 }, // 5
+            { position: [ 1.0,  0.5,  1.0], mass: 100 }, // 6
+            { position: [ 0.6,  0.5,  0.0], mass: 125 }, // 7
+            { position: [ 0.0, -0.2,  0.0], mass: 150 }  // 8
         ];
 
         // the points might have been defined in a "comfortable" way, where the centroid is not at
@@ -36,11 +36,12 @@ let Drone = function () {
         // the origin
         let position = computePosition (this.particles);
         for (let particle of particles) {
-            particle.position = Float4.point (Float3.subtract (particle.position, position));
+            particle.position = Float3.subtract (particle.position, position);
         }
 
-        // position *SHOULD* be at the origin, and start the model off with no velocity...
-        this.position = computePosition (this.particles);
+        // position *SHOULD* be at the origin
+        //this.position = computePosition (this.particles);
+        this.position = [0, 0, 0];
 
         // some of the particle nodes will flash brightly to resemble running lights. these control
         // the flash timing
@@ -59,6 +60,8 @@ let Drone = function () {
             worker.addEventListener("message", function (event) {
                 that.handleWorkerResponse(event.data);
             });
+            // pass the particle to the
+            parameters.particles = particles;
             this.postMessage ("start", parameters);
         } else {
             // web workers aren't supported?
