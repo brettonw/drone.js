@@ -40,7 +40,6 @@ let Drone = function () {
         }
 
         // position *SHOULD* be at the origin
-        //this.position = computePosition (this.particles);
         this.position = [0, 0, 0];
 
         // some of the particle nodes will flash brightly to resemble running lights. these control
