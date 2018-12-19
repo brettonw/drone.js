@@ -1,5 +1,7 @@
 "use strict;"
 
+const targetFrameRate = 30;
+
 if (! ("TWO_PI" in Math)) {
     Math.TWO_PI = Math.PI * 2.0;
 }

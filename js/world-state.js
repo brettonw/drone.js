@@ -81,5 +81,5 @@ let WorldState = function () {
 
 // deltaTime is a global value we set to control simulation rates
 let worldState;
-let deltaTime;
+let deltaTime = 1.0 / targetFrameRate;
 

@@ -5,7 +5,6 @@ let scene;
 let standardUniforms = Object.create (null);
 
 // the default deltaTime
-const targetFrameRate = 30;
 deltaTime = 1.0 / targetFrameRate;
 const targetFrameDeltaTimeMs = 1000.0 * deltaTime * 0.9;
 
@@ -71,7 +70,7 @@ let drawFrame = function () {
         Thing.updateAll (deltaTime);
     }
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (35, context.viewportWidth / context.viewportHeight, 0.1, 64);
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (25, context.viewportWidth / context.viewportHeight, 0.1, 64);
     let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.75, 2.75, 4.25]);
     standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
@@ -156,20 +155,22 @@ let buildScene = function () {
     // add some "space" nodes to give a sense of motion, spaced at 1x1, from -12 .. 12
     let spaceHigh = 16;
     let spaceLow = -spaceHigh;
-    let spaceSpacing = 1;
+    let spaceSpacing = 2;
     for (let i = spaceLow; i <= spaceHigh; i+= spaceSpacing) {
         for (let k = spaceLow; k <= spaceHigh; k+= spaceSpacing) {
-            scene.addChild (Node.new({
-                transform:  Float4x4.chain (Float4x4.scale (0.015), Float4x4.translate ([i, 0, k])),
-                state: function (standardUniforms) {
-                    Program.get("basic").use();
-                    //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
-                    let color = 1.0 - (Math.sqrt ((i * i) + (k * k)) / Math.sqrt (2 * (spaceHigh * spaceHigh)));
-                    standardUniforms.MODEL_COLOR =  [color, color, color];
-                },
-                shape: "cube",
-                children: false
-            }));
+            if ((Math.abs (i) > 4) || (Math.abs (k) > 4)) {
+                scene.addChild (Node.new ({
+                    transform: Float4x4.chain (Float4x4.scale (0.02), Float4x4.translate ([i, 0, k])),
+                    state: function (standardUniforms) {
+                        Program.get ("basic").use ();
+                        //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
+                        let color = 1.0 - (Math.sqrt ((i * i) + (k * k)) / Math.sqrt (2 * (spaceHigh * spaceHigh)));
+                        standardUniforms.MODEL_COLOR = [color, color, color];
+                    },
+                    shape: "cube",
+                    children: false
+                }));
+            }
         }
     }
 
@@ -179,7 +180,7 @@ let buildScene = function () {
     let droneLow = -droneHigh;
     let droneSpacing = 3;
     for (let i = droneLow; i <= droneHigh; i += droneSpacing) {
-        for (let j = droneLow; (count < 6) && (j <= droneHigh); j += droneSpacing) {
+        for (let j = droneLow; (count < 10) && (j <= droneHigh); j += droneSpacing) {
             if (! ((i === 0) && (j === 0))) {
                 ++count;
                 DroneTester.new ({ goal: [i, 1.5, j] }).addToScene (scene);
