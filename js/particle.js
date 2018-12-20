@@ -9,7 +9,7 @@ let Particle = function () {
         this.velocity = Float3.create ().fill (0);
         this.mass = Utility.defaultValue (parameters.mass, 100.0);
         this.force = Float3.create ().fill (0);
-        console.log ("Particle: " + Float3.str (this.position));
+        //console.log ("Particle: " + Float3.str (this.position));
     };
 
     _.applyForce = function (force) {

@@ -9,6 +9,7 @@ let Model = function () {
         this.particles = inputModel.particles;
         this.struts = inputModel.struts;
         this.basis = inputModel.basis;
+        this.motors = inputModel.motors;
 
         // the points of the model might have been defined in a "comfortable" way, where the
         // centroid is not at the origin; first, we compute the center of mass

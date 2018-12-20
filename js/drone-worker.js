@@ -10,8 +10,9 @@ let DroneWorker = function () {
         // compute the motor forces, such that all 4 motors at half speed balance gravity exactly
         let model = parameters.model;
         this.motorForce = (2 * model.totalMass * Math.GRAVITY) / 4;
-
         this.motors = [0, 0, 0, 0];
+
+        this.boundaryParticleIndexGroups = model.motors;
 
         // set up the controller PIDs - we scale the x-z location PIDs to limit the allowed output
         // prevent the drone from
@@ -24,10 +25,6 @@ let DroneWorker = function () {
             tiltX:          PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.55 }}),
             tiltZ:          PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.55 }})
         };
-
-        // drones are only alive if they haven't crashed, we call that "stunned", and start out
-        // *NOT* stunned
-        this.stun = false;
 
         // default start goal, we create this here *NOT* to set the goal, but to create the object
         // that will hold the goal values as we continue
@@ -43,12 +40,31 @@ let DroneWorker = function () {
         }
     };
 
-    let boundaryParticleIndexGroups = [
-        [0, 1, 7],
-        [2, 3, 1],
-        [4, 5, 3],
-        [6, 7, 5]
-    ];
+    _.updateCoordinateFrame = function (deltaTime) {
+        let particles = this.particles;
+
+        // compute the centroid of the particles as the translation for the updated transformation
+        // matrix
+        let centerOfMass = [0, 0, 0];
+        for (let particle of particles) {
+            centerOfMass = Float3.add (centerOfMass, Float3.scale (particle.position, particle.mass));
+        }
+        centerOfMass = Float3.scale (centerOfMass, 1 / this.totalMass);
+
+        //  extract the basis using the differences in the particle positions. the Y-axis will be
+        //  the average of pts 0, 2, 4, and 6; minus point 8. X-axis and Z-axis get a couple of
+        //  iterations to average out the relative error
+        let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
+        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
+        let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
+        let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[0].position));
+        let Z2 = Float3.cross (X, Y);
+        Z = Float3.normalize (Float3.add (Z, Z2));
+        X = Float3.cross (Y, Z);
+
+        // build the transform...
+        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, centerOfMass));
+    };
 
     _.runMotor = function (which, speed) {
         // speed is positive for clockwise, negative for counter-clockwise [-1..1]
@@ -57,7 +73,7 @@ let DroneWorker = function () {
         // forces we compute the torque application vectors and the force application vectors at
         // those three points
         let particles = this.particles;
-        let boundaryParticleIndexes = boundaryParticleIndexGroups[which];
+        let boundaryParticleIndexes = this.boundaryParticleIndexGroups[which];
         let a = particles[boundaryParticleIndexes[0]];
         let b = particles[boundaryParticleIndexes[1]];
         let c = particles[boundaryParticleIndexes[2]];

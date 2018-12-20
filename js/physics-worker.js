@@ -20,19 +20,20 @@ let PhysicsWorker = function () {
         // stable structure
         let constraints = this.constraints = [];
         for (let strut of model.struts) {
-            constraints.push (DistanceConstraint.new ({particles: particles, a: strut.a, b: strut.b}));
+            constraints.push (DistanceConstraint.new ({particles: particles, a: strut.a, b: strut.b, springConstant: strut.k}));
         }
-    };
 
-    _.computeBasis = function () {
-        let particles = this.particles;
+        // copy the basis
+        let basis = model.basis;
+        this.basis = {
+            x: { a: particles[basis.x.a], b: particles[basis.x.b]},
+            y: { a: particles[basis.y.a], b: particles[basis.y.b]},
+            z: { a: particles[basis.z.a], b: particles[basis.z.b]}
+        };
 
-        // the model defines the basis vectors as the vectors between three given pairs of
-        // particles, and we iterate over the solution to create a rigid, perpendicular basis
-        let basis = this.model.basis;
-        let X = Float3.normalize (Float3.subtract (particles[basis.x.a].position, particles[basis.x.b].position));
-        let Y = Float3.normalize (Float3.subtract (particles[basis.y.a].position, particles[basis.y.b].position));
-        let Z = Float3.normalize (Float3.subtract (particles[basis.z.a].position, particles[basis.z.b].position));
+        // objects are only alive if they haven't hit the ground, we call that "stunned", and start
+        // out *NOT* stunned
+        this.stun = false;
     };
 
     _.updateCoordinateFrame = function (deltaTime) {
@@ -46,17 +47,18 @@ let PhysicsWorker = function () {
         }
         centerOfMass = Float3.scale (centerOfMass, 1 / this.totalMass);
 
-        // XXX - this needs a way to specify the basis from the model
-        //  extract the basis using the differences in the particle positions. the Y-axis will be
-        //  the average of pts 0, 2, 4, and 6; minus point 8. X-axis and Z-axis get a couple of
-        //  iterations to average out the relative error
-        let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
-        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
-        let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
-        let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[0].position));
+        // the model defines the basis vectors as the vectors between three given pairs of
+        // particles, and we iterate over the solution to create a rigid, perpendicular basis
+        let basis = this.basis;
+        let X = Float3.normalize (Float3.subtract (basis.x.a.position, basis.x.b.position));
+        let Y = Float3.normalize (Float3.subtract (basis.y.a.position, basis.y.b.position));
+        let Z = Float3.normalize (Float3.subtract (basis.z.a.position, basis.z.b.position));
+
+        /*
         let Z2 = Float3.cross (X, Y);
         Z = Float3.normalize (Float3.add (Z, Z2));
         X = Float3.cross (Y, Z);
+        */
 
         // build the transform...
         this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, centerOfMass));

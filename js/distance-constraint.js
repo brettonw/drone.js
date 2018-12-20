@@ -11,7 +11,7 @@ let DistanceConstraint = function () {
 
         this.springConstant = Utility.defaultValue (parameters.springConstant, 1e3);
         this.damping = Utility.defaultValue (parameters.damping, 0.2);
-        console.log ("DistanceConstraint: (" + parameters.a + " -> " + parameters.b + "), length: " + this.length.toFixed(3));
+        //console.log ("DistanceConstraint: (" + parameters.a + " -> " + parameters.b + "), length: " + this.length.toFixed(3));
     };
 
     _.apply = function (deltaTime) {
