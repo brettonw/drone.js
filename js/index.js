@@ -158,7 +158,7 @@ let buildScene = function () {
     let spaceSpacing = 2;
     for (let i = spaceLow; i <= spaceHigh; i+= spaceSpacing) {
         for (let k = spaceLow; k <= spaceHigh; k+= spaceSpacing) {
-            if ((Math.abs (i) > 4) || (Math.abs (k) > 4)) {
+            if ((Math.abs (i) >= 4) || (Math.abs (k) >= 4)) {
                 scene.addChild (Node.new ({
                     transform: Float4x4.chain (Float4x4.scale (0.02), Float4x4.translate ([i, 0, k])),
                     state: function (standardUniforms) {
@@ -175,14 +175,12 @@ let buildScene = function () {
     }
 
     // lay down a pack of drones
-    let count = 0;
     let droneHigh = 3;
     let droneLow = -droneHigh;
     let droneSpacing = 3;
     for (let i = droneLow; i <= droneHigh; i += droneSpacing) {
-        for (let j = droneLow; (count < 10) && (j <= droneHigh); j += droneSpacing) {
+        for (let j = droneLow; j <= droneHigh; j += droneSpacing) {
             if (! ((i === 0) && (j === 0))) {
-                ++count;
                 DroneTester.new ({ goal: [i, 1.5, j] }).addToScene (scene);
             }
         }
