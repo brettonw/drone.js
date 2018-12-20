@@ -1,41 +1,15 @@
 "use strict;"
 
 let DroneWorker = function () {
-    let _ = Object.create (ClassBase);
-
-    let computePosition = function (particles) {
-        let position = Float3.create().fill (0);
-        let totalMass = 0;
-        for (let particle of particles) {
-            position = Float3.add (position, Float3.scale (particle.position, particle.mass));
-            totalMass += particle.mass;
-        }
-        position = Float3.scale (position, 1 / totalMass);
-        return position;
-    };
+    let _ = Object.create (PhysicsWorker);
 
     _.construct = function (parameters) {
-        // copy a transformation matrix if one was provided
-        let transform = this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
-
-        // copy the particles out of the model
-        let model = parameters.model;
-        let particles = this.particles = [];
-        for (let particle of model.particles) {
-            particle.transform = transform;
-            particles.push (Particle.new (particle));
-        }
+        // call teh super class constructor
+        Object.getPrototypeOf(_).construct.call(this, parameters);
 
         // compute the motor forces, such that all 4 motors at half speed balance gravity exactly
-        this.totalMass = model.totalMass;
+        let model = parameters.model;
         this.motorForce = (2 * model.totalMass * Math.GRAVITY) / 4;
-
-        // establish the triangulated distance constraints that hold the particles together as a
-        // stable structure
-        let constraints = this.constraints = [];
-        for (let strut of model.struts) {
-            constraints.push (DistanceConstraint.new ({particles: particles, a: strut.a, b: strut.b}));
-        }
 
         this.motors = [0, 0, 0, 0];
 
@@ -43,14 +17,12 @@ let DroneWorker = function () {
         // prevent the drone from
         // flipping itself over
         this.controller = {
-            locationX: PID.new (  { gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
-            locationY: PID.new (  { gains: { p: 0.5, i: 0.0, d: 0.65 }}),
-            locationZ: PID.new (  { gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
-            orientation: PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.65 }, deltaFunction: function (x, y) {
-                    return Math.conditionAngle (y - x) / Math.PI;
-                }}),
-            tiltX: PID.new (      { gains: { p: 0.5, i: 0.0, d: 0.55 }}),
-            tiltZ: PID.new (      { gains: { p: 0.5, i: 0.0, d: 0.55 }})
+            locationX:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+            locationY:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.65 }}),
+            locationZ:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }, outputScale: 0.333 }),
+            orientation:    PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.65 }, deltaFunction: function (x, y) { return Math.conditionAngle (y - x) / Math.PI; }}),
+            tiltX:          PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.55 }}),
+            tiltZ:          PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.55 }})
         };
 
         // drones are only alive if they haven't crashed, we call that "stunned", and start out
@@ -62,75 +34,12 @@ let DroneWorker = function () {
         this.goal = { x: 0, y: 0, z: 0 };
     };
 
-    _.updateCoordinateFrame = function (deltaTime) {
-        let particles = this.particles;
-
-        // compute the centroid of the particles
-        let centerOfMass = [0, 0, 0];
-        for (let particle of particles) {
-            centerOfMass = Float3.add (centerOfMass, Float3.scale (particle.position, particle.mass));
-        }
-        centerOfMass = Float3.scale (centerOfMass, 1 / this.totalMass);
-
-        // the Y frame will be the average of pts 0, 2, 4, and 6; minus point 8
-        let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
-        let X = Float3.normalize (Float3.subtract (particles[0].position, particles[2].position));
-        let Y = Float3.normalize (Float3.subtract (Ymid, particles[8].position));
-        let Z = Float3.normalize (Float3.subtract (particles[6].position, particles[0].position));
-        let Z2 = Float3.cross (X, Y);
-        Z = Float3.normalize (Float3.add (Z, Z2));
-        X = Float3.cross (Y, Z);
-
-        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, centerOfMass));
-    };
-
-    _.subUpdateParticles = function (subStepDeltaTime) {
-        let particles = this.particles;
-
-        // apply the ground constraint, then loop over all the distance constraints to apply them
-        this.stun = GroundConstraint.apply (particles, subStepDeltaTime) || this.stun;
-        for (let constraint of this.constraints) {
-            constraint.apply (subStepDeltaTime);
-        }
-
-        // apply gravity and air resistance to all the particles, and update them
-        for (let particle of particles) {
-            particle
-                .applyGravity (subStepDeltaTime)
-                //.applyDrag ()
-                .update (subStepDeltaTime);
-        }
-
-        this.updateCoordinateFrame (subStepDeltaTime);
-    };
-
     _.subUpdate = function (subStepDeltaTime) {
         if (this.stun === false) {
             this.runController (subStepDeltaTime);
             for (let i = 0, end = this.motors.length; i < end; ++i) {
                 this.runMotor (i, this.motors[i]);
             }
-        }
-    };
-
-    _.update = function (deltaTime) {
-        let particles = this.particles;
-
-        // we want to update the physics simulation faster than we display it, the goal is a total
-        // of *about* 1,000Hz.
-        let subSteps = Math.floor(1000 / targetFrameRate);
-        let subStepDeltaTime = deltaTime / subSteps;
-        for (let i = 0; i < subSteps; ++i) {
-            this.subUpdateParticles(subStepDeltaTime);
-            this.subUpdate(subStepDeltaTime);
-        }
-
-        // numerical methods drift, a regular re-normalization counteracts the drift. all of the
-        // points are reset to their base multiplied by the transform (as computed in
-        // updateCoordinateFrame).
-        let transform = this.transform;
-        for (let particle of particles) {
-            particle.position = Float4x4.preMultiply(particle.base, transform);
         }
     };
 

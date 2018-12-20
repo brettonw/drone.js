@@ -1,7 +1,15 @@
 "use strict;"
 
 importScripts("https://brettonw.github.io/webgl.js/src/main/webapp/webgl-debug.js");
-importScripts("constants.js", "particle.js", "ground-constraint.js", "distance-constraint.js", "pid.js", "drone-worker.js");
+importScripts(
+    "constants.js",
+    "particle.js",
+    "ground-constraint.js",
+    "distance-constraint.js",
+    "pid.js",
+    "physics-worker.js",
+    "drone-worker.js"
+);
 
 let drone;
 

@@ -3,14 +3,6 @@
 let Particle = function () {
     let _ = Object.create (ClassBase);
 
-    let validateFloat3 = function (float3) {
-        for (let component of float3) {
-            if (isNaN (component)) {
-                console.log ("isNan");
-            }
-        }
-    };
-
     _.construct = function (parameters) {
         this.base = Float4.point (parameters.position);
         this.position = Float4x4.preMultiply (this.base, parameters.transform);
@@ -21,15 +13,11 @@ let Particle = function () {
     };
 
     _.applyForce = function (force) {
-        //validateFloat3 (force);
         this.force = Float3.add (this.force, force);
-        //validateFloat3 (this.force);
         return this;
     };
 
     _.applyAcceleration = function (acceleration) {
-        // check that acceleration is valid
-        //validateFloat3 (acceleration);
         let force = Float3.scale (acceleration, this.mass);
         this.applyForce (force);
         return this;
@@ -41,14 +29,16 @@ let Particle = function () {
     };
 
     _.applyDrag = function () {
-        let windVelocity = worldState.query (WorldState.WIND);
+        let windVelocity = [0, 0, 0]; //worldState.query (WorldState.WIND);
 
-        // coefficient of drag for a sphere is 0.5, for our purposes - particles have a radius of
-        // 0.1, so the "frontal area" is Pi*r*r or about .01 * 3.14 = .031415 - we call that 0.1
+        // coefficient of drag for a sphere is 0.5, particles have an assumed radius of 0.1, so the
+        // "frontal area" is Pi*r*r or about .01 * 3.14 = .031415 - we call that 0.1 for effect...
         const a = 0.1;
         const rho = 1.2;
         const cd = 0.5;
 
+        // compute the total particle velocity relative to the wind, then compute the particle
+        // response to the drag force.
         let totalVelocity = Float3.add (Float3.scale (windVelocity, -1.0), this.velocity);
         let v = Float3.norm (totalVelocity);
         if (v > 0) {
