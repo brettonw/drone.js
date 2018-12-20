@@ -12,7 +12,8 @@ let Particle = function () {
     };
 
     _.construct = function (parameters) {
-        this.position = Float3.copy (parameters.position);
+        this.base = Float4.point (parameters.position);
+        this.position = Float4x4.preMultiply (this.base, parameters.transform);
         this.velocity = Float3.create ().fill (0);
         this.mass = Utility.defaultValue (parameters.mass, 100.0);
         this.force = Float3.create ().fill (0);
@@ -20,15 +21,15 @@ let Particle = function () {
     };
 
     _.applyForce = function (force) {
-        validateFloat3 (force);
+        //validateFloat3 (force);
         this.force = Float3.add (this.force, force);
-        validateFloat3 (this.force);
+        //validateFloat3 (this.force);
         return this;
     };
 
     _.applyAcceleration = function (acceleration) {
         // check that acceleration is valid
-        validateFloat3 (acceleration);
+        //validateFloat3 (acceleration);
         let force = Float3.scale (acceleration, this.mass);
         this.applyForce (force);
         return this;

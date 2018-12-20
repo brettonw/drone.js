@@ -18,56 +18,23 @@ let DroneWorker = function () {
         // copy a transformation matrix if one was provided
         let transform = this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
 
-        // copy the particles out of the input parameters
+        // copy the particles out of the model
+        let model = parameters.model;
         let particles = this.particles = [];
-        for (let particle of parameters.particles) {
+        for (let particle of model.particles) {
+            particle.transform = transform;
             particles.push (Particle.new (particle));
         }
 
-        // compute the mass, and the motor forces, such that all 4 motors at half speed are on a
-        // balance with gravity
-        let mass = 0;
-        for (let particle of particles) {
-            mass += particle.mass;
-        }
-        this.motorForce = (2 * mass * Math.GRAVITY) / 4;
+        // compute the motor forces, such that all 4 motors at half speed balance gravity exactly
+        this.totalMass = model.totalMass;
+        this.motorForce = (2 * model.totalMass * Math.GRAVITY) / 4;
 
         // establish the triangulated distance constraints that hold the particles together as a
         // stable structure
-        let constraints = this.constraints = [
-            DistanceConstraint.new ({particles: particles, a: 0, b: 1}),
-            DistanceConstraint.new ({particles: particles, a: 1, b: 2}),
-            DistanceConstraint.new ({particles: particles, a: 2, b: 3}),
-            DistanceConstraint.new ({particles: particles, a: 3, b: 4}),
-            DistanceConstraint.new ({particles: particles, a: 4, b: 5}),
-            DistanceConstraint.new ({particles: particles, a: 5, b: 6}),
-            DistanceConstraint.new ({particles: particles, a: 6, b: 7}),
-            DistanceConstraint.new ({particles: particles, a: 7, b: 0}),
-
-            DistanceConstraint.new ({particles: particles, a: 1, b: 3}),
-            DistanceConstraint.new ({particles: particles, a: 3, b: 5}),
-            DistanceConstraint.new ({particles: particles, a: 5, b: 7}),
-            DistanceConstraint.new ({particles: particles, a: 7, b: 1}),
-
-            DistanceConstraint.new ({particles: particles, a: 3, b: 7}),
-
-            DistanceConstraint.new ({particles: particles, a: 0, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 1, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 2, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 3, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 4, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 5, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 6, b: 8}),
-            DistanceConstraint.new ({particles: particles, a: 7, b: 8})
-        ];
-
-        // the points might have been defined in a "comfortable" way, where the centroid is not at
-        // the origin; we'll compute the centroid and relocate the points - so the position is at
-        // the origin
-        let position = computePosition (this.particles);
-        for (let particle of particles) {
-            particle.base = Float4.point (particle.position);
-            particle.position = Float4x4.preMultiply (particle.base, transform);
+        let constraints = this.constraints = [];
+        for (let strut of model.struts) {
+            constraints.push (DistanceConstraint.new ({particles: particles, a: strut.a, b: strut.b}));
         }
 
         this.motors = [0, 0, 0, 0];
@@ -98,8 +65,12 @@ let DroneWorker = function () {
     _.updateCoordinateFrame = function (deltaTime) {
         let particles = this.particles;
 
-        // compute the centroid
-        let position = computePosition (particles);
+        // compute the centroid of the particles
+        let centerOfMass = [0, 0, 0];
+        for (let particle of particles) {
+            centerOfMass = Float3.add (centerOfMass, Float3.scale (particle.position, particle.mass));
+        }
+        centerOfMass = Float3.scale (centerOfMass, 1 / this.totalMass);
 
         // the Y frame will be the average of pts 0, 2, 4, and 6; minus point 8
         let Ymid = Float3.scale (Float3.add (Float3.add (particles[0].position, particles[2].position), Float3.add (particles[4].position, particles[6].position)), 1.0 / 4.0);
@@ -110,7 +81,7 @@ let DroneWorker = function () {
         Z = Float3.normalize (Float3.add (Z, Z2));
         X = Float3.cross (Y, Z);
 
-        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, position));
+        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, centerOfMass));
     };
 
     _.subUpdateParticles = function (subStepDeltaTime) {

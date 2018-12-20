@@ -208,7 +208,8 @@ let main = function () {
     Render.new ({
         canvasId: "render-canvas",
         loaders: [
-            LoaderPath.new ({ type: Texture, path: "textures/@.png" }).addItems (["grid-16x16", "drone-deck", "drone-props"], { generateMipMap: true }),
+            LoaderPath.new ({ type: Texture, path: "texture/@.png" }).addItems (["grid-16x16", "drone-deck", "drone-props"], { generateMipMap: true }),
+            LoaderPath.new ({ type: TextFile, path: "model/@.json" }).addItems ("drone"),
         ],
         onReady: OnReady.new (null, buildScene)
     });

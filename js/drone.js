@@ -3,41 +3,12 @@
 let Drone = function () {
     let _ = Object.create (Thing);
 
-    let computePosition = function (particles) {
-        let position = Float3.create().fill (0);
-        let totalMass = 0;
-        for (let particle of particles) {
-            position = Float3.add (position, Float3.scale (particle.position, particle.mass));
-            totalMass += particle.mass;
-        }
-        position = Float3.scale (position, 1 / totalMass);
-        return position;
-    };
-
     _.construct = function (parameters) {
         // copy a transformation matrix if one was provided
         let transform = this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
 
-        // define a group of particles that we will use to build our triangulated, stable structure
-        let particles = this.particles = [
-            { position: [ 1.0,  0.5, -1.0], mass: 100 }, // 0
-            { position: [ 0.0,  0.5, -0.6], mass: 125 }, // 1
-            { position: [-1.0,  0.5, -1.0], mass: 100 }, // 2
-            { position: [-0.6,  0.5,  0.0], mass: 125 }, // 3
-            { position: [-1.0,  0.5,  1.0], mass: 100 }, // 4
-            { position: [ 0.0,  0.5,  0.6], mass: 125 }, // 5
-            { position: [ 1.0,  0.5,  1.0], mass: 100 }, // 6
-            { position: [ 0.6,  0.5,  0.0], mass: 125 }, // 7
-            { position: [ 0.0, -0.2,  0.0], mass: 150 }  // 8
-        ];
-
-        // the points might have been defined in a "comfortable" way, where the centroid is not at
-        // the origin; we'll compute the centroid and relocate the points - so the position is at
-        // the origin
-        let position = computePosition (this.particles);
-        for (let particle of particles) {
-            particle.position = Float3.subtract (particle.position, position);
-        }
+        // get the drone geometry from the file
+        let model = this.model = Model.new ({ model: "drone" });
 
         // position *SHOULD* be at the origin
         this.position = [0, 0, 0];
@@ -59,8 +30,9 @@ let Drone = function () {
             worker.addEventListener("message", function (event) {
                 that.handleWorkerResponse(event.data);
             });
-            // pass the particle to the
-            parameters.particles = particles;
+
+            // pass the model to the worker in the parameters
+            parameters.model = model;
             this.postMessage ("start", parameters);
         } else {
             // web workers aren't supported?
@@ -102,8 +74,6 @@ let Drone = function () {
     _.addToScene = function (parentNode) {
         console.log ("Drone named: " + this.name);
         let that = this;
-
-        let particles = this.particles;
 
         // put down a representation of the drone geometry for visual purposes
         let modelNode = Node.new ({
@@ -206,8 +176,8 @@ let Drone = function () {
             }));
 
         // add the actual particles below the model node, so they transform with the drone
-        for (let i = 0; i < particles.length;  ++i) {
-            let particle = particles[i];
+        for (let i = 0; i < this.model.particles.length;  ++i) {
+            let particle = this.model.particles[i];
             modelNode.addChild(Node.new({
                 transform: Float4x4.chain ( Float4x4.scale (0.0002 * particle.mass), Float4x4.translate (particle.position)),
                 state: function (standardUniforms) {
