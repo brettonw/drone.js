@@ -8,6 +8,7 @@ let Model = function () {
         let inputModel = JSON.parse(TextFile.get (parameters.model).text);
         this.particles = inputModel.particles;
         this.struts = inputModel.struts;
+        this.basis = inputModel.basis;
 
         // the points of the model might have been defined in a "comfortable" way, where the
         // centroid is not at the origin; first, we compute the center of mass

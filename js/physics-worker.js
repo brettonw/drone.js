@@ -24,6 +24,17 @@ let PhysicsWorker = function () {
         }
     };
 
+    _.computeBasis = function () {
+        let particles = this.particles;
+
+        // the model defines the basis vectors as the vectors between three given pairs of
+        // particles, and we iterate over the solution to create a rigid, perpendicular basis
+        let basis = this.model.basis;
+        let X = Float3.normalize (Float3.subtract (particles[basis.x.a].position, particles[basis.x.b].position));
+        let Y = Float3.normalize (Float3.subtract (particles[basis.y.a].position, particles[basis.y.b].position));
+        let Z = Float3.normalize (Float3.subtract (particles[basis.z.a].position, particles[basis.z.b].position));
+    };
+
     _.updateCoordinateFrame = function (deltaTime) {
         let particles = this.particles;
 
