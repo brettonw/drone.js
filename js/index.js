@@ -70,7 +70,7 @@ let drawFrame = function () {
         Thing.updateAll (deltaTime);
     }
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (25, context.viewportWidth / context.viewportHeight, 0.1, 64);
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 64);
     let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.75, 2.75, 4.25]);
     standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
