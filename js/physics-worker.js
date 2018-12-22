@@ -53,7 +53,7 @@ let PhysicsWorker = function () {
         */
 
         // build the transform...
-        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, centerOfMass));
+        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, this.position));
     };
 
     _.subUpdateParticles = function (subStepDeltaTime) {

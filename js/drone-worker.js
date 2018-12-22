@@ -151,8 +151,9 @@ let DroneWorker = function () {
         // compute the deltaScales, default to 1, but if there's a long way to go, try to balance
         // the PID responses to go in a straight line
         let deltaScales = [1, 1, 1];
-        let deltaToGoal = Float3.subtract ([goal.x, goal.y, goal.z], this.position);
-        const near = 0.1;
+        /*
+        let deltaToGoal = Float3.subtract ([goal.x, goal.y, goal.z], this.position).map (component => Math.abs (component));
+        const near = 1.0;
         let deltaToGoalLength = Float3.norm (deltaToGoal);
         if (deltaToGoalLength > near) {
             // figure how much of the distance to go is outside of the "near" region, to compute an
@@ -160,13 +161,12 @@ let DroneWorker = function () {
             let nearWeight = near / deltaToGoalLength;
             let farWeight = 1.0 - nearWeight;
 
-            deltaToGoal = deltaToGoal.map (component => Math.abs (component));
-            let largestComponent = Math.max.apply (null, deltaToGoal);
-            deltaScales = deltaToGoal.map (component => (nearWeight * 1.0) + (farWeight * (component / largestComponent)));
+            deltaScales = deltaToGoal.map (component => (nearWeight * 1.0) + (farWeight * (component / deltaToGoalLength)));
         }
+        */
 
         // compute the altitude of the drone using the y component of the translation
-        let speed = (controller.locationY.update (transform[13], goal.y, deltaTime) + 1.0) / 2.0;
+        let speed = (controller.locationY.update (transform[13], goal.y, deltaTime, deltaScales[1]) + 1.0) / 2.0;
 
         // compute the orientation of the drone using the x and z components of the x-axis - our
         // goal is to always orient the drone with the x and z axes (the other assumptions are
@@ -176,8 +176,8 @@ let DroneWorker = function () {
         let turn = -controller.orientation.update (orientationAngle, 0.0, deltaTime);
 
         // compute the required velocity input to reach the target location in each axis
-        let xVel = controller.locationX.update (transform[12], goal.x, deltaTime, deltaScales[0]);
-        let zVel = controller.locationZ.update (transform[14], goal.z, deltaTime, deltaScales[2]);
+        let xVel = controller.locationX.update (this.position[0], goal.x, deltaTime, deltaScales[0]);
+        let zVel = controller.locationZ.update (this.position[2], goal.z, deltaTime, deltaScales[2]);
 
         // use the velocity input to compute the tilt input, we measure these values by looking at
         // x and z components of the y axis.

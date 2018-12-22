@@ -11,6 +11,8 @@ const targetFrameDeltaTimeMs = 1000.0 * deltaTime * 0.9;
 let fpsHistory = RollingAverage.new ({ count: targetFrameRate });
 
 let droneOne;
+let droneOneHistory = [];
+let droneOneHistoryIndex = 0;
 
 let animateCheckbox;
 let displayFpsSpan;
@@ -68,6 +70,9 @@ let drawFrame = function () {
 
         // NOTE - might need to control the order of thing updates, especially the world state first
         Thing.updateAll (deltaTime);
+
+        droneOneHistory[droneOneHistoryIndex].transform = Float4x4.chain (Float4x4.scale (0.025), Float4x4.translate (droneOne.drone.position));
+        droneOneHistoryIndex = [droneOneHistoryIndex + 1] % droneOneHistory.length;
     }
 
     standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 64);
@@ -189,6 +194,23 @@ let buildScene = function () {
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
     droneOne = DroneTester.new ({ goal: [0, 1.5, 0], debug: false }, "one").addToScene (scene);
+
+    // lay down a couple of seconds of history
+    for (let i = 0; i < (targetFrameRate * 5); ++i) {
+        let node = Node.new ({
+            transform: Float4x4.scale (0.2),
+            state: function (standardUniforms) {
+                Program.get ("basic").use ();
+                //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
+                standardUniforms.MODEL_COLOR = [1.0, 1.0, 0.0];
+                standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.25;
+            },
+            shape: "sphere2",
+            children: false
+        });
+        scene.addChild (node);
+        droneOneHistory.push (node);
+    }
 
     drawFrame ();
 };
