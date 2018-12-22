@@ -39,14 +39,6 @@ let PhysicsWorker = function () {
     _.updateCoordinateFrame = function (deltaTime) {
         let particles = this.particles;
 
-        // compute the centroid of the particles as the translation for the updated transformation
-        // matrix
-        let centerOfMass = [0, 0, 0];
-        for (let particle of particles) {
-            centerOfMass = Float3.add (centerOfMass, Float3.scale (particle.position, particle.mass));
-        }
-        centerOfMass = Float3.scale (centerOfMass, 1 / this.totalMass);
-
         // the model defines the basis vectors as the vectors between three given pairs of
         // particles, and we iterate over the solution to create a rigid, perpendicular basis
         let basis = this.basis;
@@ -80,6 +72,14 @@ let PhysicsWorker = function () {
                 .applyDrag ()
                 .update (subStepDeltaTime);
         }
+
+        // compute the centroid of the particles as the translation for the updated transformation
+        // matrix
+        let position = [0, 0, 0];
+        for (let particle of particles) {
+            position = Float3.add (position, Float3.scale (particle.position, particle.mass));
+        }
+        this.position = Float3.scale (position, 1 / this.totalMass);
 
         this.updateCoordinateFrame (subStepDeltaTime);
     };

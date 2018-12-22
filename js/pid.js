@@ -17,12 +17,15 @@ let PID = function () {
     };
 
     // update will return an output that is the effort to exert on the system input
-    _.update = function (measuredValue, setValue, deltaTime, deltaFunction) {
+    _.update = function (measuredValue, setValue, deltaTime, deltaScale) {
         // compute PID, and update the history (see https://en.wikipedia.org/wiki/PID_controller)
         // the i and d components are senstive to the deltaTime
+
+        deltaScale = Utility.defaultValue (deltaScale, 1.0);
+
         let last = this.last;
         this.v = measuredValue;
-        let p = this.deltaFunction (measuredValue, setValue);
+        let p = this.deltaFunction (measuredValue, setValue) * deltaScale;
         let i = this.i = this.i + (p * deltaTime);
         let d = (p - this.p) / deltaTime;
         this.p = p;

@@ -43,14 +43,6 @@ let DroneWorker = function () {
     _.updateCoordinateFrame = function (deltaTime) {
         let particles = this.particles;
 
-        // compute the centroid of the particles as the translation for the updated transformation
-        // matrix
-        let centerOfMass = [0, 0, 0];
-        for (let particle of particles) {
-            centerOfMass = Float3.add (centerOfMass, Float3.scale (particle.position, particle.mass));
-        }
-        centerOfMass = Float3.scale (centerOfMass, 1 / this.totalMass);
-
         //  extract the basis using the differences in the particle positions. the Y-axis will be
         //  the average of pts 0, 2, 4, and 6; minus point 8. X-axis and Z-axis get a couple of
         //  iterations to average out the relative error
@@ -63,7 +55,7 @@ let DroneWorker = function () {
         X = Float3.cross (Y, Z);
 
         // build the transform...
-        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, centerOfMass));
+        this.transform = Float4x4.inverse (Float4x4.viewMatrix (X, Y, Z, this.position));
     };
 
     _.runMotor = function (which, speed) {
@@ -156,6 +148,23 @@ let DroneWorker = function () {
         let transform = this.transform;
         let goal = this.goal;
 
+        // compute the deltaScales, default to 1, but if there's a long way to go, try to balance
+        // the PID responses to go in a straight line
+        let deltaScales = [1, 1, 1];
+        let deltaToGoal = Float3.subtract ([goal.x, goal.y, goal.z], this.position);
+        const near = 0.1;
+        let deltaToGoalLength = Float3.norm (deltaToGoal);
+        if (deltaToGoalLength > near) {
+            // figure how much of the distance to go is outside of the "near" region, to compute an
+            // interpolant
+            let nearWeight = near / deltaToGoalLength;
+            let farWeight = 1.0 - nearWeight;
+
+            deltaToGoal = deltaToGoal.map (component => Math.abs (component));
+            let largestComponent = Math.max.apply (null, deltaToGoal);
+            deltaScales = deltaToGoal.map (component => (nearWeight * 1.0) + (farWeight * (component / largestComponent)));
+        }
+
         // compute the altitude of the drone using the y component of the translation
         let speed = (controller.locationY.update (transform[13], goal.y, deltaTime) + 1.0) / 2.0;
 
@@ -167,8 +176,8 @@ let DroneWorker = function () {
         let turn = -controller.orientation.update (orientationAngle, 0.0, deltaTime);
 
         // compute the required velocity input to reach the target location in each axis
-        let xVel = controller.locationX.update (transform[12], goal.x, deltaTime);
-        let zVel = controller.locationZ.update (transform[14], goal.z, deltaTime);
+        let xVel = controller.locationX.update (transform[12], goal.x, deltaTime, deltaScales[0]);
+        let zVel = controller.locationZ.update (transform[14], goal.z, deltaTime, deltaScales[2]);
 
         // use the velocity input to compute the tilt input, we measure these values by looking at
         // x and z components of the y axis.
