@@ -49,6 +49,14 @@ let updateRunFocus = function () {
 };
 
 let lastTime = new Date ().getTime ();
+let lastGoal = [0, 0, 0];
+let currentGoal = [0, 0, 0];
+let newMidPoint = [0, 0, 0];
+let cameraOffset = [0, 0, 0];
+let newCameraPosition = [-1, 10, 10];
+let lastCameraPosition = Float3.copy (newCameraPosition);
+let lastMidPoint = [0, 0, 0];
+let upVector = [0, 1, 0];
 let drawFrame = function () {
     if ((animateCheckbox.checked) && (runFocus === true)) {
         // draw again as fast as possible
@@ -75,11 +83,61 @@ let drawFrame = function () {
         droneOneHistoryIndex = [droneOneHistoryIndex + 1] % droneOneHistory.length;
     }
 
-    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (30, context.viewportWidth / context.viewportHeight, 0.1, 64);
+    let fovDegrees = 30;
+    standardUniforms.PROJECTION_MATRIX_PARAMETER = Float4x4.perspective (fovDegrees, context.viewportWidth / context.viewportHeight, 0.1, 128);
+
+    /*
+    let oldestHistoryIndex = (droneOneHistoryIndex + 1) % droneOneHistory.length;
+    let oldestTransform = droneOneHistory[oldestHistoryIndex].transform;
+    let oldestPosition = [oldestTransform[12], oldestTransform[13], oldestTransform[14]];
+    let cameraDeltaVector = Float3.subtract (droneOne.drone.position, oldestPosition);
+    let cameraDeltaVectorLength = Float3.norm (cameraDeltaVector);
+    cameraDeltaVector = Float3.add (Float3.add (Float3.scale (cameraDeltaVector, (1 / cameraDeltaVectorLength) * 5), droneOne.drone.position), [-0.5, 1, 1]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, oldestPosition, [0, 1, 0]);
+    */
+
+    if (!Float3.equals (droneOne.goal, currentGoal)) {
+        lastGoal = currentGoal;
+        newMidPoint = Float3.scale (Float3.add (currentGoal, droneOne.goal), 0.5);
+        currentGoal = droneOne.goal;
+
+        // compute the newCameraPosition, at the midpoint, combine the up-vector with the mid->goal
+        // vector, and then move it out far enough to ensure the goal is in view
+        let midPointToGoalVector = Float3.subtract (currentGoal, newMidPoint);
+        let normalizedMidPointToGoalVector = Float3.normalize (midPointToGoalVector);
+        //let offsetVector = Float3.normalize (Float3.add (upVector, normalizedMidPointToGoalVector));
+
+        let perp = Float3.cross (upVector, normalizedMidPointToGoalVector);
+        let offsetVector = Float3.normalize (Float3.add (perp, upVector));
+        let ptU = Float3.add (newMidPoint, Float3.scale (offsetVector, Float3.dot (offsetVector, midPointToGoalVector)));
+
+        let opp = Float3.norm (Float3.subtract (ptU, currentGoal)) + 3;
+        let adj = (opp / Utility.tan ((16 / 9) * (fovDegrees / 2)));
+        newCameraPosition = Float3.add (Float3.add (ptU, Float3.scale (offsetVector, adj)), cameraOffset);
+
+        // add in a bit of perpendicular offset
+    }
+    // linear combination of the frame positions so the camera takes a full second to make the transition
+    lastCameraPosition = Float3.scale (Float3.add (newCameraPosition, Float3.scale (lastCameraPosition, targetFrameRate - 1)), 1 / targetFrameRate);
+    let midPointToGoalVector = Float3.subtract (currentGoal, newMidPoint);
+    let normalizedMidPointToGoalVector = Float3.normalize (midPointToGoalVector);
+    let extendedGoalPosition = Float3.add (Float3.add (currentGoal, Float3.scale (normalizedMidPointToGoalVector, 10)), Float3.scale (upVector, 0));
+    newCameraPosition = Float3.scale (Float3.add (newCameraPosition, Float3.scale (extendedGoalPosition, 0.01)), 1 / 1.01);
+
+    lastMidPoint = Float3.scale (Float3.add (newMidPoint, Float3.scale (lastMidPoint, targetFrameRate - 1)), 1 / targetFrameRate);
+
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (lastCameraPosition, lastMidPoint, upVector);
+
+    /*
     let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
     let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength)  * (cameraDeltaVectorLength + 5)), [-0.75, 2.75, 4.25]);
-    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
+    standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, oldestPosition, [0, 1, 0]);
+    */
+
     //standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (Float3.add ([0, 2, 4], droneOne.drone.position), droneOne.drone.position, [0, 1, 0]);
+
+
+
     standardUniforms.MODEL_MATRIX_PARAMETER = Float4x4.identity ();
 
     // compute the camera position and set it in the standard uniforms
@@ -179,6 +237,23 @@ let buildScene = function () {
         }
     }
 
+    // lay down a few seconds of history
+    for (let i = 0; i < (targetFrameRate * 7); ++i) {
+        let node = Node.new ({
+            transform: Float4x4.chain (Float4x4.scale (0.01), Float4x4.translate ([0, 1.49, 0])),
+            state: function (standardUniforms) {
+                Program.get ("color").use ();
+                //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
+                standardUniforms.MODEL_COLOR = [1.0, 1.0, 0.0];
+                standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.25;
+            },
+            shape: "sphere2",
+            children: false
+        });
+        scene.addChild (node);
+        droneOneHistory.push (node);
+    }
+
     // lay down a pack of drones
     let droneHigh = 3;
     let droneLow = -droneHigh;
@@ -194,23 +269,6 @@ let buildScene = function () {
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
     droneOne = DroneTester.new ({ goal: [0, 1.5, 0], debug: false }, "one").addToScene (scene);
-
-    // lay down a couple of seconds of history
-    for (let i = 0; i < (targetFrameRate * 5); ++i) {
-        let node = Node.new ({
-            transform: Float4x4.scale (0.2),
-            state: function (standardUniforms) {
-                Program.get ("basic").use ();
-                //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
-                standardUniforms.MODEL_COLOR = [1.0, 1.0, 0.0];
-                standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.25;
-            },
-            shape: "sphere2",
-            children: false
-        });
-        scene.addChild (node);
-        droneOneHistory.push (node);
-    }
 
     drawFrame ();
 };
