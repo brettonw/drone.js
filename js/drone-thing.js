@@ -28,6 +28,8 @@ let DroneThing = function () {
             state: function (standardUniforms) {
                 Program.get ("basic").use ();
                 standardUniforms.MODEL_COLOR = [0.3, 0.7, 1.0];
+                standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
+
                 //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
             },
             shape: "sphere2",

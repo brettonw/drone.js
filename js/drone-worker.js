@@ -18,9 +18,9 @@ let DroneWorker = function () {
         // prevent the drone from
         // flipping itself over
         this.controller = {
-            locationX:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.35 }, outputScale: 0.333 }),
+            locationX:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.25 }, outputScale: 0.333 }),
             locationY:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.0 }}),
-            locationZ:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.35 }, outputScale: 0.333 }),
+            locationZ:      PID.new ({ gains: { p: 0.5, i: 0.0, d: 1.25 }, outputScale: 0.333 }),
             orientation:    PID.new ({ gains: { p: 0.65, i: 0.0, d: 1.0 }, deltaFunction: function (x, y) { return Math.conditionAngle (y - x) / Math.PI; }}),
             tiltX:          PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.55 }}),
             tiltZ:          PID.new ({ gains: { p: 0.5, i: 0.0, d: 0.55 }})
