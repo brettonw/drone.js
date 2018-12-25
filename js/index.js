@@ -137,9 +137,12 @@ let drawFrame = function () {
         } break;
 
         case "OTS": {
-            let cameraDeltaVectorLength = Float3.norm (droneOne.drone.position);
-            let cameraDeltaVector = Float3.add (Float3.scale (droneOne.drone.position, (1 / cameraDeltaVectorLength) * (cameraDeltaVectorLength + 5)), [-0.75, 2.75, 4.25]);
-            standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, droneOne.drone.position, [0, 1, 0]);
+            let historyIndex = ((droneOneHistoryIndex - Math.floor (targetFrameRate / 3)) + droneOneHistory.length) % droneOneHistory.length;
+            let transform = droneOneHistory[historyIndex].transform;
+            let position = [transform[12], transform[13], transform[14]];
+            let cameraDeltaVectorLength = Float3.norm (position);
+            let cameraDeltaVector = Float3.add (Float3.scale (position, (1 / cameraDeltaVectorLength) * (cameraDeltaVectorLength + 5)), [-0.75, 2.75, 4.25]);
+            standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (cameraDeltaVector, position, [0, 1, 0]);
         } break;
 
         case "Z-Axis Locked": {
@@ -253,11 +256,18 @@ let buildScene = function () {
         transform: Float4x4.identity (),
         state: function (standardUniforms) {
             Program.get ("color").use ();
+            //context.disable (context.DEPTH_WRITEMASK);
             standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.25;
             standardUniforms.MODEL_COLOR = [1.0, 1.0, 0.0];
         }
     }, "trail");
-    scene.addChild (trail);
+    scene.addChild (trail)
+        .addChild (Node.new ({
+            state: function (standardUniforms) {
+                //context.enable (context.DEPTH_WRITEMASK);
+            },
+            children: false
+        }));
     for (let i = 0; i < (targetFrameRate * 8); ++i) {
         let node = Node.new ({
             transform: Float4x4.chain (Float4x4.scale (0.01), Float4x4.translate ([0, 1.49, 0])),
@@ -269,7 +279,6 @@ let buildScene = function () {
     }
 
     // lay down a pack of drones
-    /*
     let droneHigh = 3;
     let droneLow = -droneHigh;
     let droneSpacing = 3;
@@ -280,7 +289,6 @@ let buildScene = function () {
             }
         }
     }
-    */
 
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone

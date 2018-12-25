@@ -168,10 +168,19 @@ let Drone = function () {
                 transform: Float4x4.chain (Float4x4.rotateX (Math.PI / -2), Float4x4.translate ([0, 0.05, 0]), Float4x4.scale ([1.1, 1, 1.1])),
                 state: function (standardUniforms) {
                     Program.get ("basic-texture").use ();
+                    //context.disable (context.DEPTH_WRITEMASK);
+                    //context.depthMask (false);
                     standardUniforms.MODEL_COLOR = [1.0, 1.0, 1.0];
                     standardUniforms.TEXTURE_SAMPLER = "drone-props";
                 },
                 shape: "square",
+                children: false
+            }))
+            .addChild (Node.new ({
+                state: function (standardUniforms) {
+                    //context.enable (context.DEPTH_WRITEMASK);
+                    //context.depthMask (true);
+                },
                 children: false
             }));
 
