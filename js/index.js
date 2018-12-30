@@ -132,7 +132,11 @@ let drawFrame = function () {
 
             lastMidPoint = Float3.scale (Float3.add (newMidPoint, Float3.scale (lastMidPoint, targetFrameRate - 1)), 1 / targetFrameRate);
 
-            standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (lastCameraPosition, lastMidPoint, upVector);
+            let historyIndex = ((droneOneHistoryIndex - Math.floor (targetFrameRate / 3)) + droneOneHistory.length) % droneOneHistory.length;
+            let transform = droneOneHistory[historyIndex].transform;
+            let position = [transform[12], transform[13], transform[14]];
+            let cameraTarget = Float3.scale (Float3.add (lastMidPoint, position), 0.5);
+            standardUniforms.VIEW_MATRIX_PARAMETER = Float4x4.lookFromAt (lastCameraPosition, cameraTarget, upVector);
 
         } break;
 
