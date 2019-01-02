@@ -11,26 +11,27 @@ importScripts(
     "drone-worker.js"
 );
 
-let drone;
+let object;
 
 addEventListener("message", function(event) {
     let message = event.data;
     switch (message.command) {
         case "start":
-            // get the transform...
-            drone = DroneWorker.new (message.parameters);
+            // get the object type
+            let objectType = eval (message.parameters.workerObjectType);
+            object = objectType.new (message.parameters);
             break;
         case "update":
-            drone.update(message.parameters.deltaTime);
-            postMessage({command: "update", parameters: { transform: drone.transform }});
+            object.update(message.parameters.deltaTime);
+            postMessage({command: "update", parameters: { transform: object.transform }});
             break;
         case "set-goal":
-            drone.setGoal(message.parameters.xyz);
+            object.setGoal(message.parameters.xyz);
             break;
         case "stop":
             close();
             break;
         default:
             postMessage({command: "error", parameters: { description: "Unknown command (" + message.command + ")" }});
-    };
+    }
 }, false);

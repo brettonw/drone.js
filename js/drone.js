@@ -1,60 +1,22 @@
 "use strict;"
 
 let Drone = function () {
-    let _ = Object.create (Thing);
+    let _ = Object.create (PhysicsObject);
 
     _.construct = function (parameters) {
         // copy a transformation matrix if one was provided
-        let transform = this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
+        this.transform = Utility.defaultValue (parameters.transform, Float4x4.identity ());
 
         // get the drone geometry from the file
-        let model = this.model = Model.new ({ model: "drone" });
-
-        // position *SHOULD* be at the origin
-        this.position = [0, 0, 0];
+        parameters.model = Utility.defaultValue (parameters.model, "drone");
+        parameters.workerObjectType = Utility.defaultValue (parameters.workerObjectType, "DroneWorker");
+        Object.getPrototypeOf(_).construct.call(this, parameters);
 
         // some of the particle nodes will flash brightly to resemble running lights. these control
         // the flash timing
         let flashers = this.flashers = [];
         for (let i = 0; i < 5; ++i) {
             flashers.push (Flasher.new ());
-        }
-
-        // copy if the drone is created in a debug state
-        this.debug = Utility.defaultValue (parameters.debug, false);
-
-        // create a web worker to run the drone simulation
-        if (typeof(Worker) !== "undefined") {
-            let worker = this.worker = new Worker ("js/worker.js");
-            let that = this;
-            worker.addEventListener("message", function (event) {
-                that.handleWorkerResponse(event.data);
-            });
-
-            // pass the model to the worker in the parameters
-            parameters.model = model;
-            this.postMessage ("start", parameters);
-        } else {
-            // web workers aren't supported?
-            console.log ("ERROR - no web workers");
-        }
-    };
-
-    _.postMessage = function (command, parameters) {
-        this.worker.postMessage ({command: command, parameters: parameters});
-    };
-
-    _.handleWorkerResponse = function (response) {
-        //console.log ("got it (" + response + ")");
-        switch (response.command) {
-            case "update":
-                let transform = response.parameters.transform;;
-                Node.get (this.name + " (drone-model)").transform = transform;
-                this.position = [transform[12], transform[13], transform[14]];
-                break;
-            case "error":
-                console.log (response.parameters.description);
-                break;
         }
     };
 
@@ -64,7 +26,8 @@ let Drone = function () {
             flasher.update(deltaTime);
         }
 
-        this.postMessage ("update", { deltaTime: deltaTime });
+        // do the parental update
+        Object.getPrototypeOf(_).update.call(this, deltaTime);
     };
 
     _.setGoal = function (xyz) {
