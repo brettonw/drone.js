@@ -5,8 +5,6 @@ let DroneWorker = function () {
 
     _.construct = function (parameters) {
         // call the super class constructor
-        parameters.workerName = Utility.defaultValue(parameters.workerName, "worker");
-        parameters.workerObjectType = "DroneWorker";
         Object.getPrototypeOf(_).construct.call(this, parameters);
 
         // compute the motor forces, such that all 4 motors at half speed balance gravity exactly

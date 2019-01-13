@@ -5,7 +5,7 @@ let DroneThing = function () {
 
     _.construct = function (parameters) {
         this.goal = Utility.defaultValue (parameters.goal, [0, 2, 0]);
-        this.drone = Drone.new ({ transform: Float4x4.translate (this.goal), debug: Utility.defaultValue (parameters.debug, false) });
+        this.drone = DroneObject.new ({ transform: Float4x4.translate (this.goal), debug: Utility.defaultValue (parameters.debug, false), useThread: Utility.defaultValue (parameters.useThread, true) });
     };
 
     _.update = function (deltaTime) {
@@ -29,8 +29,6 @@ let DroneThing = function () {
                 Program.get ("basic").use ();
                 standardUniforms.MODEL_COLOR = [0.3, 0.7, 1.0];
                 standardUniforms.OUTPUT_ALPHA_PARAMETER = 1.0;
-
-                //standardUniforms.OUTPUT_ALPHA_PARAMETER = 0.5;
             },
             shape: "sphere2",
             children: false

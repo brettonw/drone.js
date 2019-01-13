@@ -7,31 +7,28 @@ importScripts(
     "ground-constraint.js",
     "distance-constraint.js",
     "pid.js",
+    "local-worker.js",
     "physics-worker.js",
     "drone-worker.js"
 );
 
-let object;
+let localWorker;
 
 addEventListener("message", function(event) {
     let message = event.data;
     switch (message.command) {
         case "start":
-            // get the object type
-            let objectType = eval (message.parameters.workerObjectType);
-            object = objectType.new (message.parameters);
+            localWorker = LocalWorker.new (message.parameters);
             break;
         case "update":
-            object.update(message.parameters.deltaTime);
-            postMessage({command: "update", parameters: { transform: object.transform }});
-            break;
-        case "set-goal":
-            object.setGoal(message.parameters.xyz);
+            localWorker.postMessage(message);
+            postMessage({command: "update", parameters: { transform: localWorker.object.transform }});
             break;
         case "stop":
             close();
             break;
         default:
-            postMessage({command: "error", parameters: { description: "Unknown command (" + message.command + ")" }});
+            localWorker.postMessage (message);
+            break;
     }
 }, false);

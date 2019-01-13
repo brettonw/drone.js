@@ -7,18 +7,20 @@ let DroneTuner = function () {
 
     _.construct = function (parameters) {
         // call the super class constructor
+        parameters.useThread = false;
         Object.getPrototypeOf(_).construct.call(this, parameters);
 
         // set up the error tracking history for the error terms
         this.history = [];
 
         // set the drone controller gains to my own PID gains
-        this.drone.controller.locationX.gains =   { p: 0.6, i: 0.0, d: 1.0 };
-        this.drone.controller.locationY.gains =   { p: 0.6, i: 0.0, d: 0.5 };
-        this.drone.controller.locationZ.gains =   { p: 0.6, i: 0.0, d: 1.0 };
-        this.drone.controller.orientation.gains = { p: 0.6, i: 0.0, d: 0.65 };
-        this.drone.controller.tiltX.gains =       { p: 0.6, i: 0.0, d: 0.55 };
-        this.drone.controller.tiltZ.gains =       { p: 0.6, i: 0.0, d: 0.55 };
+        let controller = this.controller = this.drone.worker.object.controller;
+        controller.locationX.gains =   { p: 0.6, i: 0.0, d: 1.0 };
+        controller.locationY.gains =   { p: 0.6, i: 0.0, d: 0.5 };
+        controller.locationZ.gains =   { p: 0.6, i: 0.0, d: 1.0 };
+        controller.orientation.gains = { p: 0.6, i: 0.0, d: 0.65 };
+        controller.tiltX.gains =       { p: 0.6, i: 0.0, d: 0.55 };
+        controller.tiltZ.gains =       { p: 0.6, i: 0.0, d: 0.55 };
 
         // update the drone controller with a function that doesn't apply any external forces
         this.drone.subUpdateParticles = function (subStepDeltaTime) {
@@ -72,12 +74,12 @@ let DroneTuner = function () {
         this.history.push({
             time: worldState.query(WorldState.TIME),
             p: {
-                locationX: this.drone.controller.locationX.p,
-                locationY: this.drone.controller.locationY.p,
-                locationZ: this.drone.controller.locationZ.p,
-                orientation: this.drone.controller.orientation.p,
-                tiltX: this.drone.controller.tiltX.p,
-                tiltZ: this.drone.controller.tiltZ.p
+                locationX: this.controller.locationX.p,
+                locationY: this.controller.locationY.p,
+                locationZ: this.controller.locationZ.p,
+                orientation: this.controller.orientation.p,
+                tiltX: this.controller.tiltX.p,
+                tiltZ: this.controller.tiltZ.p
             }
         });
 

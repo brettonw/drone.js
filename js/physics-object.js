@@ -4,22 +4,22 @@ let PhysicsObject = function () {
     let _ = Object.create (Thing);
 
     _.startWorker = function (parameters) {
+        // include a few details in the parameters
+        parameters.model = this.model;
+        parameters.workerObjectType = Utility.defaultValue (parameters.workerObjectType, "PhysicsWorker");
+
         // check to see if the worker should be threaded
         let useThread = Utility.defaultValue (parameters.useThread, true);
 
         // if we want to use threads - let's try...
         if (useThread === true) {
             if (typeof(Worker) !== "undefined") {
-                let workerName = Utility.defaultValue (parameters.workerName, "worker");
-                let worker = this.worker = new Worker ("js/" + workerName + ".js");
+                this.worker = new Worker ("js/threaded-worker.js");
                 let that = this;
-                worker.addEventListener("message", function (event) {
+                this.worker.addEventListener("message", function (event) {
                     that.handleWorkerResponse(event.data);
                 });
 
-                // pass the model to the worker in the parameters
-                parameters.model = this.model;
-                parameters.workerObjectType = Utility.defaultValue (parameters.workerObjectType, "PhysicsWorker");
                 this.postMessage ("start", parameters);
             } else {
                 // web workers aren't supported?
@@ -29,7 +29,7 @@ let PhysicsObject = function () {
 
         // if we didn't want threads, or we failed to get a thread...
         if (! useThread) {
-
+            this.worker = LocalWorker.new (parameters);
         }
     };
 
@@ -58,7 +58,7 @@ let PhysicsObject = function () {
         //console.log ("got it (" + response + ")");
         switch (response.command) {
             case "update":
-                let transform = response.parameters.transform;;
+                let transform = response.parameters.transform;
                 Node.get (this.name + " (drone-model)").transform = transform;
                 this.position = [transform[12], transform[13], transform[14]];
                 break;
@@ -70,6 +70,11 @@ let PhysicsObject = function () {
 
     _.update = function (deltaTime) {
         this.postMessage ("update", { deltaTime: deltaTime });
+        if ("object" in this.worker) {
+            let transform = this.worker.object.transform;
+            Node.get (this.name + " (drone-model)").transform = transform;
+            this.position = [transform[12], transform[13], transform[14]];
+        }
     };
 
     _.addToScene = function (parentNode) {

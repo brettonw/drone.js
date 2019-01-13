@@ -1,6 +1,6 @@
 "use strict;"
 
-let Drone = function () {
+let DroneObject = function () {
     let _ = Object.create (PhysicsObject);
 
     _.construct = function (parameters) {
@@ -31,7 +31,7 @@ let Drone = function () {
     };
 
     _.setGoal = function (xyz) {
-        this.postMessage ("set-goal", { xyz: xyz });
+        this.postMessage ("setGoal", { xyz: xyz });
     };
 
     _.addToScene = function (parentNode) {
