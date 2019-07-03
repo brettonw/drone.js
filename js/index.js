@@ -283,7 +283,7 @@ let buildScene = function () {
     }
 
     // lay down a pack of drones
-    /*
+
     let droneHigh = 3;
     let droneLow = -droneHigh;
     let droneSpacing = 3;
@@ -294,11 +294,11 @@ let buildScene = function () {
             }
         }
     }
-    */
+
 
     // create the drone, the transform applies to the first configuration to give the initial
     // flight configuration of the drone
-    droneOne = DroneTuner.new ({ goal: [0, 1.5, 0], debug: false }, "one").addToScene (scene);
+    droneOne = DroneTester.new ({ goal: [0, 1.5, 0], debug: false }, "one").addToScene (scene);
 
     drawFrame ();
 };
