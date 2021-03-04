@@ -1,6 +1,7 @@
 "use strict;"
 
-
+let render;
+let frameCounter = 0;
 let scene;
 let standardUniforms = Object.create (null);
 
@@ -39,6 +40,11 @@ window.addEventListener("blur", function (event) {
     updateRunFocus ();
 });
 
+function sleep(milliseconds) {
+    var currentTime = new Date().getTime();
+    while (currentTime + milliseconds >= new Date().getTime()) {}
+}
+
 let runFocus = true;
 let updateRunFocus = function () {
     if ((visibilityState === "visible") && (windowFocusState === "focus")) {
@@ -61,6 +67,10 @@ let lastCameraPosition = Float3.copy (newCameraPosition);
 let lastMidPoint = [0, 0, 0];
 let upVector = [0, 1, 0];
 let drawFrame = function () {
+    if (++frameCounter > 1) {
+        //render.save ((frameCounter-1).toString (10).padStart (4, "0"));
+        //sleep (2);
+    }
     if ((animateCheckbox.checked) && (runFocus === true)) {
         // draw again as fast as possible
         window.requestAnimationFrame (drawFrame);
@@ -317,7 +327,7 @@ let main = function () {
     displayFpsSpan = document.getElementById("displayFpsSpan");
 
     // create the render object
-    Render.new ({
+    render = Render.new ({
         canvasId: "render-canvas",
         loaders: [
             LoaderPath.new ({ type: Texture, path: "texture/@.png" }).addItems (["grid-16x16", "drone-deck", "drone-props"], { generateMipMap: true }),
