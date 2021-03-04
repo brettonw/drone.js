@@ -12,11 +12,17 @@
             box-sizing: border-box;
             width: 100%;
             height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            color: white;
+            background: black;
         }
 
         body {
-            width: 100%;
-            height: 100%;
+            margin: 10px auto;
+            width: calc(100% - 10px);
+            max-width: 1920px;
         }
 
         .plot-container {
@@ -33,14 +39,13 @@
         }
 
         #render-container {
-            width: calc(100% - 20px);
-            position: relative; /* If you want text inside of it */
+            position: relative;
             padding-top: 56.25%;
-            margin: 0 auto;
+            margin: 5px auto;
             max-width: 1920px;
             max-height: calc(100% - 75px);
             border:none;
-            background-color:#f00;
+            background-color:#222;
         }
         #render-canvas {
             position: absolute;
@@ -48,17 +53,6 @@
             left: 0;
             bottom: 0;
             right: 0;
-
-            display: block;
-            width: calc(100% - 20px);
-            max-width: calc(100% - 20px);
-            height: auto;
-            max-height: 100%;
-            padding: 0;
-            overflow: hidden;
-
-            margin: 0 auto;
-
             border:none;
             background-color:#a52;
         }
@@ -66,9 +60,8 @@
     <body onload="main ();">
         <div id="title"><span style="font-size:24px;">drone.js</span></div>
         <div id="render-container">
-            <canvas id="render-canvas" style="" width="1280px" height="720px" tabindex="0"></canvas>
         </div>
-        <div style="width: 854px;">
+        <div style="padding: 5px;">
             <div style="display: inline-block;"><input type="checkbox" id="animateCheckbox" onchange="clickAnimateCheckbox ();" CHECKED> Animated</div>
             <div style="display: inline-block; margin-left: 20px;"><input type="checkbox" id="showTrailCheckbox" CHECKED> Show Trail</div>
             <div style="display: inline-block; margin-left: 20px;">View: <select id="cameraSelect">
@@ -76,7 +69,7 @@
                 <option>Wide Sweep</option>
                 <option>Z-Axis Locked</option>
             </select></div>
-            <div style="display: inline-block;float:right;" id="displayFpsSpan">0</div>
+            <div style="display: inline-block;float:right;"><div style="display: inline-block; margin: 0 5px;" id="displayFpsSpan">0</div><div style="display: inline-block;" id="displayResolutionSpan">0 x 0</div></div>
         </div>
         <div class="plot-container"><div class="plot" id="plot-error"></div></div>
     </body>

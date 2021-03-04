@@ -326,6 +326,33 @@ let main = function () {
     cameraSelect = document.getElementById ("cameraSelect");
     displayFpsSpan = document.getElementById("displayFpsSpan");
 
+    // dynamically create and size a canvas object
+    let container = document.getElementById("render-container");
+    container.innerHTML = "";
+    let canvas = document.createElement("canvas");
+    let width;
+    if (container.clientWidth >= 1920) {
+        width = 1920;
+    } else if (container.clientWidth >= 1280) {
+        width = 1280;
+    } else if (container.clientWidth >= 960) {
+        width = 960;
+    } else if (container.clientWidth >= 854) {
+        width = 854;
+    } else if (container.clientWidth >= 720) {
+        width = 720;
+    } else {
+        width = container.clientWidth;
+    }
+    canvas.width = width;
+    canvas.height = Math.ceil((width * 9) / 16);
+    canvas.tabindex = 0;
+    canvas.id = "render-canvas";
+    canvas.style.left = ((container.clientWidth - width) / 2) + "px";
+    canvas.style.top = ((container.clientHeight - canvas.height) / 2) + "px";
+    container.appendChild(canvas);
+    document.getElementById("displayResolutionSpan").innerHTML = canvas.clientWidth + " x " + canvas.clientHeight;
+
     // create the render object
     render = Render.new ({
         canvasId: "render-canvas",
