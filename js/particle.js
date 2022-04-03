@@ -6,6 +6,8 @@ let Particle = function () {
     _.construct = function (parameters) {
         this.base = Float4.point (parameters.position);
         this.position = Float4x4.preMultiply (this.base, parameters.transform);
+        this.lastPosition = this.position;
+        this.lastDeltaTime = 1;
         this.velocity = Float3.create ().fill (0);
         this.mass = Utility.defaultValue (parameters.mass, 100.0);
         this.force = Float3.create ().fill (0);
@@ -50,6 +52,31 @@ let Particle = function () {
     };
 
     _.update = function (deltaTime) {
+        /*
+        // use Verlet integration to compute the next position
+        // pos = pos + (pos - lastPos) + (accel * deltaTime^2)
+
+        // compute the velocity term, scaled to account for changes in the deltaTime value
+        let velocityTerm = Float3.scale (Float3.subtract (this.position, this.lastPosition), deltaTime / this.lastDeltaTime);
+
+        // compute the acceleration term from the accumulated forces, and then clear them out so we
+        // don't keep applying them
+        let accelerationTerm = Float3.scale(this.force, deltaTime * deltaTime / this.mass);
+        this.force.fill (0);
+
+        // compute the deltaPosition and add it to the position
+        let deltaPosition = Float3.add (velocityTerm, accelerationTerm);
+        let nextPosition = Float3.add (this.position, deltaPosition);
+
+        // update the velocity vector for giggles
+        this.velocity = Float3.scale (deltaPosition, 1.0 / deltaTime);
+
+        // save the position for the next iteration
+        this.lastDeltaTime = deltaTime;
+        this.lastPosition = this.position;
+        this.position = nextPosition;
+        */
+
         // compute acceleration from the forces, convert it to the change in velocity, and then
         // clear out the forces so we don't accidentally keep reapplying them
         let deltaVelocity = Float3.scale(this.force, deltaTime / this.mass);
