@@ -7,6 +7,7 @@ let GroundConstraint = function () {
         let stun = false;
         for (let particle of particles) {
             if (particle.position[1] <= 0.0) {
+                /*
                 let verticalVelocity = particle.velocity[1];
                 let horizontalVelocity = [particle.velocity[0], 0, particle.velocity[2]];
                 particle.applyAcceleration (Float3.scale (horizontalVelocity,  -0.1 / deltaTime));
@@ -17,8 +18,9 @@ let GroundConstraint = function () {
                     let groundAccel = [0, -(1.0 + elasticity) * verticalVelocity / deltaTime, 0];
                     particle.applyAcceleration (Float3.copy (groundAccel));
                 }
+                */
                 particle.position[1] = 0.0;
-                stun = true;
+                //stun = true;
             }
         }
         return stun;

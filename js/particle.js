@@ -52,7 +52,6 @@ let Particle = function () {
     };
 
     _.update = function (deltaTime) {
-        /*
         // use Verlet integration to compute the next position
         // pos = pos + (pos - lastPos) + (accel * deltaTime^2)
 
@@ -75,8 +74,8 @@ let Particle = function () {
         this.lastDeltaTime = deltaTime;
         this.lastPosition = this.position;
         this.position = nextPosition;
-        */
 
+        /*
         // compute acceleration from the forces, convert it to the change in velocity, and then
         // clear out the forces so we don't accidentally keep reapplying them
         let deltaVelocity = Float3.scale(this.force, deltaTime / this.mass);
@@ -88,6 +87,7 @@ let Particle = function () {
 
         // update the velocity from the delta
         this.velocity = Float3.add (this.velocity, deltaVelocity);
+        */
     };
 
     return _;

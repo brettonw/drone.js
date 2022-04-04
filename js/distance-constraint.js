@@ -18,9 +18,17 @@ let DistanceConstraint = function () {
         let a = this.a;
         let b = this.b;
         let delta = Float3.subtract (a.position, b.position);
-        let length = Float3.norm (delta);
-        delta = Float3.scale (delta, 1.0 / length);
+        let deltaLength = Float3.norm (delta);
 
+        // for Verlet (position-based) integration, we simply move the particles to where they
+        // should be according to the constraint and the relative mass of the two particles. the
+        // state information contained in the particles maintains basic laws, conservation of
+        // momentum, etc.
+        var changeLength = (this.length - deltaLength) / deltaLength;
+        a.position = Float3.add(a.position, Float3.scale(delta, changeLength * (a.mass / this.totalMass)))
+        b.position = Float3.add(b.position, Float3.scale(delta, -changeLength * (b.mass / this.totalMass)))
+
+/*
         // compute the relative velocity damping force to apply, the goal here is to halt all
         // relative motion between the particles with the application of this force
         let relativeVelocity = Float3.subtract (a.velocity, b.velocity);
@@ -37,6 +45,7 @@ let DistanceConstraint = function () {
         let F = springForce + velocityDampingForce;
         a.applyForce(Float3.scale(delta, -F));
         b.applyForce(Float3.scale(delta, F))
+*/
     };
 
     return _;

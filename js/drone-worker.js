@@ -9,7 +9,8 @@ let DroneWorker = function () {
 
         // compute the motor forces, such that all 4 motors at half speed balance gravity exactly
         let model = parameters.model;
-        this.motorForce = (2 * model.totalMass * Math.GRAVITY) / 4;
+        //this.motorForce = (2 * model.totalMass * Math.GRAVITY) / 4;
+        this.motorForce = (2 * model.totalMass * Math.GRAVITY) / 2.5;
         this.motors = [0, 0, 0, 0];
 
         this.boundaryParticleIndexGroups = model.motors;
