@@ -1,7 +1,7 @@
 "use strict;"
 
 // this class implements a generic Proportional, Integral, Derivative (PID) controller - the p-term
-// is often considered the "error", the delta between the current sate and the desired state.
+// is often considered the "error", the delta between the current state and the desired state.
 let PID = function () {
     let _ = Object.create (ClassBase);
 
