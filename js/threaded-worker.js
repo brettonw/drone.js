@@ -1,6 +1,6 @@
 "use strict;"
 
-importScripts("https://brettonw.github.io/webgl.js/src/main/webapp/webgl-debug.js");
+importScripts("webgl-debug.js");
 importScripts(
     "constants.js",
     "particle.js",
